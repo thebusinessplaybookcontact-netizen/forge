@@ -1,0 +1,552 @@
+================
+ULTIMATE MASTER TO-DO LIST
+Updated: 2026-03-16 | Version: FINAL
+Owner: Kyle
+================
+Organized by WHEN to do it, not just what to do.
+Everything from every conversation is in here.
+================
+
+==============================================
+THIS WEEK -- Days 1-7 (Do these before anything else)
+==============================================
+These are the highest-leverage actions right now.
+Everything else depends on these moving.
+
+MONEY + INFRASTRUCTURE:
+[ ] BUY EMAIL WARMUP DOMAINS -- DO THIS TODAY
+    Why: More domains = more daily sends = more ROK Financial leads reached faster
+    Current cap: 150/day on your current domains
+    Target: 3-5 more domains = 450-750 emails/day potential
+    Where to buy: Namecheap or GoDaddy (~-12/domain/year)
+    Domain naming strategy: Variations on your business name or niche
+      Examples: getbizfunding.com, businesscapital.co, capitalgrowthgroup.com
+      DO NOT use your main brand domain for cold email -- protect runtheplaybook.com
+    After buying: Add to Instantly.ai, set up SPF/DKIM/DMARC, warm up for 14 days before sending
+    Cost: ~-60 for 4 domains
+
+[ ] CHECK OPEN RATE IN INSTANTLY.AI
+    Dashboard -> Campaign -> Stats -> Open Rate %
+    Report that number to Forge -- it tells us everything about what to fix
+
+[ ] CHECK THE PDF
+    Open: C:\Users\thebu\.openclaw\factory\LEADS\pdfs\lead_magnet_v2_2026-03-16_1704.pdf
+    Approve it or say "update lead magnet: [your notes]"
+    Nothing else in the funnel can move until this is done
+
+[ ] INSTALL GOOGLE DRIVE
+    drive.google.com/drive/download -> sign in -> done
+    Immediately fixes: backup risk (factory is only on Desktop right now)
+    Also enables: phone sync for TikTok upload workflow
+    Takes 5 minutes
+
+[ ] GET OPENAI API KEY
+    platform.openai.com -> API Keys
+    Run: [System.Environment]::SetEnvironmentVariable("OPENAI_API_KEY","sk-YOURKEY","User")
+    Unlocks: image generation for every post
+
+[ ] GET ELEVENLABS API KEY
+    elevenlabs.io -> Profile -> API Keys
+    Starter plan: /month (covers everything you need)
+    Run: [System.Environment]::SetEnvironmentVariable("ELEVENLABS_API_KEY","your-key","User")
+    Unlocks: voiceover pipeline for TikTok/YouTube
+
+[ ] CHECK HIGGSFIELD ACCOUNT
+    cloud.higgsfield.ai -> sign in -> find API Keys
+    Report back: does Nano Banana tier include API access?
+    Unlocks: AI video animation
+
+[ ] START POSTING ON X AND FACEBOOK
+    You can post now -- warmup allows it
+    Ready posts exist at: CONTENT\outputs\READY_TO_POST_X_5_2026-03-14.txt
+    X best times: Tue-Thu 9-11am EST
+    Facebook: any day, 10am-1pm EST
+
+[ ] OPEN XCODE ON MAC AIR
+    Just open it. Compile InkedHeal first (reviewed 9.5/10)
+    Every day this sits = passive income not collected
+
+CONTENT:
+[ ] RUN FRESH CONTENT BATCH
+    Last batch was 2026-03-14 -- you need new posts
+    Say "Platform: ALL | Post_Count: 5 each" and I'll run it now
+    Also: run "build in public" angle posts (details below)
+
+[ ] CONFIRM SHOP HAUS PODCAST NAME
+    Look it up -- send me the exact name or a link
+    I'll add it to the Podcast Research Agent immediately
+
+==============================================
+THIS MONTH -- Days 8-30
+==============================================
+These come after the Week 1 items are moving.
+
+FUNNEL + LEADS:
+[ ] SET UP KIT (email platform)
+    kit.com -> free account
+    Load 5-email nurture sequence from LEADS\lead_funnel_setup_guide.txt
+    Build landing page
+    Activate automation
+    This is what converts followers into leads and leads into ROK Financial applications
+
+[ ] SET UP LINKTREE OR BEACONS
+    Recommended: beacons.ai (free, has email capture built in)
+    Add links in order: lead magnet -> ROK link -> X -> Instagram -> TikTok -> Facebook -> YouTube
+    Update EVERY platform bio with this link
+
+[ ] BUY YOUR WEBSITE DOMAIN
+    Check availability: runtheplaybook.com
+    Buy at: Namecheap (~/year)
+    DO THIS before building the site so no one takes it
+    You don't need to build the site yet -- just own the domain
+    Fallback options if taken: runtheplaybook.co / theplaybook.run / businessplaybook.co
+
+[ ] EVALUATE EMAIL WARMUP DOMAIN RESULTS
+    After 14 days of warmup on new domains
+    Check domain health in Instantly.ai
+    Begin scaling sends if all clear
+
+APPS:
+[ ] COMPILE ALL 4 APPS ON MAC AIR
+    Priority order: InkedHeal (9.5) -> KilnLog (9.75) -> RevLog -> CatchLog
+[ ] SET UP APPLE DEVELOPER ACCOUNT (/year)
+[ ] SUBMIT ALL 4 APPS TO APP STORE
+    Each submission = passive income source once approved
+
+SOCIAL MEDIA:
+[ ] FIRST TIKTOK VIDEO
+    Day 5+ of warmup -- short, under 30 seconds, no promo
+[ ] FIRST INSTAGRAM POST
+    Day 4+ of warmup
+[ ] CONFIRM YOUTUBE WARMUP STATUS
+    Did you start Day 1? If yes when?
+[ ] POST CONSISTENTLY ON ALL PLATFORMS
+    Factory generates the posts -- you approve and post
+
+CONTENT STRATEGY:
+[ ] START "BUILD IN PUBLIC" CONTENT
+    Angle: "I'm building this business operation from scratch with AI"
+    Example posts to add to next content batch:
+    -- "I built 4 apps without writing a single line of code. Here's the exact process."
+    -- "I set up a system that writes 25 social media posts in one session."
+    -- "Day 1 cold email results: here's what happened."
+    -- "My AI system runs while I sleep. Here's what it actually does."
+    This is your portfolio and your content angle at the same time.
+    Say "write build in public posts: 5" and I'll generate them
+
+ROK FINANCIAL:
+[ ] COLD EMAIL EVALUATION AT DAY 7
+    Report: open rate, reply count breakdown, total sent
+    I'll give you a full optimization plan based on real numbers
+[ ] A/B TEST SUBJECT LINE at day 14 if open rate is under 30%
+
+==============================================
+THIS QUARTER -- Days 31-90
+==============================================
+These come after the foundation is working and money starts moving.
+
+LLC + LEGAL:
+[ ] BRAINSTORM LLC BUSINESS NAME
+    Say "brainstorm LLC names" when ready
+    Ideas so far: Forge Systems, Playbook Ventures, Operator Capital, Build Engine LLC
+    Check: state SOS website + .com domain + USPTO trademark
+[ ] REGISTER WYOMING LLC ( + /year)
+    Trigger: when 2+ revenue streams are producing consistently
+[ ] OPEN BUSINESS BANK ACCOUNT (after LLC)
+[ ] SET UP 30% TAX SAVINGS ACCOUNT (from first payment forward)
+[ ] ACTIVATE ACCOUNTING AGENT
+    Say "start accounting log" -- tracks income/expenses from day one
+    Staged until LLC is registered
+
+WEBSITE:
+[ ] BUILD WEBSITE ON FRAMER (free tier)
+    Domain you own: runtheplaybook.com (buy this month)
+    Build AFTER: 3+ weeks of content live + Kit active
+    Must include:
+    -- Lead magnet opt-in above the fold
+    -- Service packages: Starter  / Growth ,500 / Full ,500/month
+    -- OpenClaw setup service: in-person ,000 / remote ,000-,000
+    -- ROK Financial soft mention ("resources for business owners")
+    -- Blog (3 pillars: business capital, social media, AI systems)
+    Hire a VA to build it if you don't want to build it yourself
+
+CONTENT AGENCY:
+[ ] RUN FACTORY FREE FOR A FRIEND OR FAMILY BUSINESS (first case study)
+[ ] WRITE 1-PAGE SERVICE OFFER (factory can write the draft)
+[ ] SEND FIRST 20-30 OUTREACH MESSAGES TO LOCAL BUSINESSES
+[ ] FIRST PAYING CLIENT ONBOARDED (/month minimum)
+    This pays for your first VA hire
+
+DIGITAL PRODUCTS + AFFILIATES:
+[ ] WRITE FIRST DIGITAL PRODUCT (PDF guide: "How to Get Business Financing")
+    Say "write digital product: business financing guide" -- I'll draft it
+[ ] SET UP LEMON SQUEEZY ACCOUNT
+    Add product, set 40-50% affiliate commission, enable affiliate hub listing
+[ ] RECRUIT FIRST 5-10 AFFILIATES
+    DM micro-influencers in business niche with your affiliate offer
+
+VIDEO PIPELINE:
+[ ] TEST FIRST FULL AI VIDEO (once all API keys are set)
+    Script -> OpenAI images -> ElevenLabs voiceover -> Higgsfield animate -> CapCut -> post
+[ ] CALCULATE REAL COST PER VIDEO from test
+    This becomes your client pricing anchor
+[ ] BUILD TIKTOK VIDEO CADENCE (1-2 videos/week minimum during warmup)
+
+MULTI-ACCOUNT SCALING:
+[ ] RESEARCH GEELARK SETUP for TikTok + Instagram scaling
+    Only when your single accounts are producing
+[ ] RECRUIT FRIENDS TO WARM UP ADDITIONAL ACCOUNTS
+    1 friend per account, real device, warmup task list forwarded to them
+[ ] SPANISH-SPEAKING ACCOUNT PLAN
+    Huge ROK Financial opportunity -- business owners who are underserved by English-only outreach
+    Translate top-performing content into Spanish
+    Separate account: @runtheplaybook_es or similar
+
+==============================================
+FUTURE -- When revenue justifies it
+==============================================
+
+[ ] UGC + CLIPPING AGENCY
+    After Business Playbook has traction and results to show
+    Say "run future plans: UGC agency" for full research + plan
+[ ] DIRECTED VALIDATED LEAD LISTS SERVICE
+    After LeadGenJay relationship is established
+    Kyle mentioned this as a future revenue stream -- research what it entails
+    Say "run future plans: directed lead lists" for research
+[ ] TIKTOK SHOP SELLER ACCOUNT
+    Requirements: 1,000+ followers + completed profile + US-based
+    Physical product angle: printed PDF guides via Printful or Printify (print-on-demand)
+    Research: TikTok Shop setup process, print-on-demand unit economics
+[ ] OPENCLAW SYSTEM SETUP SERVICE LAUNCH
+    Trigger: Business Playbook showing real, documented results
+    Offer: in-person ,000 (Kyle flies to client) / remote ,000-,000
+    Say "research OpenClaw pricing for business clients" when ready
+[ ] COURSE / DIGITAL PRODUCT SUITE
+    After first PDF sells consistently
+    Natural progression: PDF -> mini-course -> full course -> coaching
+[ ] EQUITY INVESTING STREAM
+    Long-term -- once capital exists to deploy
+    Document in vision board for now
+[ ] PODCAST GUEST APPEARANCES
+    After brand has credibility -- major distribution channel
+    Business podcasts, entrepreneurship shows, AI/automation content
+
+==============================================
+PERSONAL LIFE -- Tracked by Accountability Agent
+==============================================
+These are NOT less important than business goals.
+
+[ ] MOVE OUT (tied to consistent income -- track monthly revenue toward this goal)
+[ ] BUY A CAR (tied to income + move -- practical needs first)
+[ ] MEMORY IMPROVEMENT
+    Start: Anki app (spaced repetition) -- free, 10 min/day
+    Podcast: Diary of a CEO neuroscience episodes
+[ ] SOCIAL INTELLIGENCE
+    Read: Never Split the Difference (Chris Voss) -- negotiation + human behavior
+    Practice: Put yourself in real conversations, networking, sales calls
+[ ] GYM CONSISTENCY (flag if not mentioned in 7+ days)
+[ ] DOCTORS APPOINTMENTS (general, dentist, eye -- when was the last time?)
+[ ] HAIR CARE ROUTINE (research conditioner vs shampoo for your hair type)
+[ ] SLEEP CONSISTENCY (7-8 hours, consistent schedule)
+[ ] KEEP LIVING SPACE CLEAN (weekly check)
+
+==============================================
+THINGS THAT ARE ALREADY BUILT AND WAITING
+==============================================
+These exist -- you just need to activate or use them:
+
+CONTENT:
+- 25 posts written and validated (CONTENT\outputs\ -- all platforms)
+- Master Daily Runner ready for any new batch
+- All 5 platform agents updated to v1.1
+- Image generation script ready (needs OpenAI key)
+- Voiceover script ready (needs ElevenLabs key)
+
+LEADS:
+- Lead magnet PDF v2 built (needs your review)
+- Lead funnel setup guide written (LEADS\lead_funnel_setup_guide.txt)
+- Cold email strategy saved (LEADS\cold_email_strategy.txt)
+- Lead Capture Agent built (OVERSIGHT\agents\lead_capture_agent_prompt.txt)
+
+PLANS + STRATEGY:
+- Vision board with all 13+ streams (PLANS\vision_board.txt)
+- Website strategy written (PLANS\website_strategy.txt)
+- Staffing plan written (PLANS\staffing_plan.txt)
+- Delegate vs Kyle split saved (PLANS\delegate_vs_kyle.txt)
+- Selling the factory guide (LEADS\selling_the_factory_guide.txt)
+
+AGENTS (all saved, ready to run):
+- 12 Research agents
+- 12 Content agents
+- 4 Oversight agents
+- 1 Accountability/Life Coach agent (updated with podcasts + life goals)
+- 1 Podcast Research agent (Diary of a CEO + Jack Neel + TikTok Shop Affiliate Academy)
+- 1 ROK Financial content agent
+- 1 Future Plans agent
+
+BACKUP:
+- Backup script ready (run_backup.ps1) -- just needs Google Drive installed or external drive
+
+==============================================
+QUICK COMMAND REFERENCE
+==============================================
+
+"warmup status"                          Today's warmup tasks for all platforms
+"Platform: ALL | Post_Count: 5 each"     Full content batch all platforms
+"write build in public posts: 5"         5 posts using the building in public angle
+"update lead magnet: [notes]"            Rebuild PDF with your feedback
+"run future plans: [topic]"              Research any future opportunity
+"lead report"                            ROK Financial leads from social engagement
+"coach check-in"                         Life + business accountability session
+"podcast research"                       Latest insights from DOTC + Jack Neel
+"analyze my cold email data"             Optimization plan (paste your numbers)
+"run backup"                             Back up entire factory
+"explain AdMob setup"                    AdMob walkthrough when first app is ready
+"brainstorm LLC names"                   Name ideas + availability checklist
+"write digital product: [topic]"         Draft a PDF guide for Lemon Squeezy
+"write 1-page service offer"             Draft your content agency offer
+
+==============================================
+PRIORITY SUMMARY -- THE SHORT VERSION
+==============================================
+
+TODAY:
+1. Buy email warmup domains (-60 -- more sends = more ROK leads)
+2. Check Instantly.ai open rate (paste it to me)
+3. Install Google Drive (5 min -- fixes backup risk)
+4. Open Xcode (don't close it until InkedHeal compiles)
+
+THIS WEEK:
+5. Get OpenAI + ElevenLabs API keys
+6. Check Higgsfield API
+7. Review + approve the PDF
+8. Post first content on X + Facebook
+9. Run new content batch
+
+THIS MONTH:
+10. Buy runtheplaybook.com domain
+11. Set up Kit + lead magnet funnel
+12. Set up Linktree/Beacons
+13. Submit at least 1 app to App Store
+14. First TikTok video
+
+WHEN MONEY HITS:
+15. LLC registration
+16. Business bank account
+17. VA hire for setup tasks
+18. Website build
+
+
+==============================================
+CHROME AUTOMATION SETUP (OpenClaw 2026.3.13)
+==============================================
+OpenClaw can now attach to your live Chrome session -- agents see exactly what you see, logged in.
+This unlocks: reading Instantly.ai stats automatically, checking social analytics, Kit list growth.
+
+TO ENABLE:
+Step 1: In Chrome, go to: chrome://flags
+Step 2: Search "remote debugging" -- enable it
+Step 3: Restart Chrome with flag: --remote-debugging-port=9222
+   (Right-click Chrome shortcut -> Properties -> add to Target: --remote-debugging-port=9222)
+Step 4: In OpenClaw, look for "Chrome Session Attach" toggle in settings
+Step 5: Toggle it on -- confirm agents can see the browser
+
+WHAT THIS UNLOCKS:
+- Autopilot reads Instantly.ai campaign stats directly (no manual paste needed)
+- Autopilot monitors social media engagement on your accounts
+- Autopilot reads Kit subscriber count automatically
+- Research agents can browse logged-in pages
+
+PRIORITY: Medium -- do after API keys and Google Drive are set up
+
+
+==============================================
+FROM YOUTUBE TRANSCRIPTS -- NEW ACTIONS
+Added: 2026-03-17
+==============================================
+
+[ ] CREATE DEDICATED FORGE EMAIL
+    Create a new Gmail: forgeagent@gmail.com (or forge@yourdomain.com when you have one)
+    Why: Bhanu's advice -- give your agent its own identity with limited access
+    Give this email READ-ONLY access to: Instantly.ai, Kit, social analytics
+    Do NOT connect to your personal accounts directly
+    Cost: Free
+
+[ ] CONSIDER VPS FOR ALWAYS-ON OPERATION
+    Current issue: OpenClaw only runs when your PC is on
+    If PC sleeps: no crons fire, no briefings, no automation
+    Fix: Host OpenClaw on a VPS that runs 24/7
+    Options: DigitalOcean (-24/mo), Railway (-20/mo), Hostinger VPS (-15/mo)
+    All have one-click OpenClaw deploy
+    Timing: When first client signed OR when you want truly 24/7 autonomy
+    Priority: MEDIUM -- important but not day 1
+
+[ ] SET UP CHROME LIVE SESSION ATTACH (already in list -- now confirmed by research)
+    OpenClaw 2026.3.13 can attach to your real Chrome session
+    Lets agents read Instantly.ai, Kit, social stats directly without you pasting them
+    Chrome flags: chrome://flags -> enable remote debugging port 9222
+    Then toggle in OpenClaw settings
+
+[ ] APPLY ACCESS TRUST LADDER TO ALL TOOLS
+    Level 1: Read-only API keys (Instantly.ai, Kit, social)
+    Level 2: Write access via scheduler (Buffer/Later, not direct platform)
+    Level 3: Code branch access (not main branch)
+    NEVER: Financial accounts, payment processors, personal email
+
+[ ] REVIEW MISSION CONTROL SETUP
+    Location: FACTORY\MISSION_CONTROL\
+    Active task board: MISSION_CONTROL\tasks\tasks_active.txt
+    Group chat log: MISSION_CONTROL\group_chat\chat_2026-03.txt
+    All agents now write findings here -- Kyle can see everything in one place
+
+
+==============================================
+FROM YOUTUBE TRANSCRIPTS (BATCH 2) -- NEW ACTIONS
+Added: 2026-03-17
+==============================================
+
+VPS -- NOW A NEAR-TERM PRIORITY (not future):
+[ ] GET A VPS FOR OPENCLAW
+    Why: 3 videos confirm this. Your PC-based setup only runs when PC is on.
+    Crons don't fire when PC sleeps. No 24/7 autopilot without a VPS.
+    Best option: Hostinger VPS (~-15/month, 24-month plan)
+    Has one-click OpenClaw deploy -- no terminal needed
+    Steps: go to hostinger.com -> VPS -> search OpenClaw deploy -> paste API keys -> done in 5 min
+    TIMING: Do this when you buy the email warmup domains (same session)
+    Cost: ~-15/month. Less than a Netflix subscription.
+
+[ ] GET APOLLO.IO ACCOUNT (free tier)
+    For: Building targeted lead lists for content agency + OpenClaw setup service
+    Free tier: 50 leads/month
+    Use: Find founders, agency owners, e-commerce brands for cold outreach
+    Better than manual scraping. Filters by company size, industry, revenue, recent posts.
+    app.apollo.io -- sign up free
+
+[ ] GET TYPEFULLY ACCOUNT (free tier)
+    For: Scheduling approved social media posts
+    Connects to X, LinkedIn. Draft posts, schedule with one click.
+    Agents can push directly to Typefully queue.
+    typefully.com -- free to start
+
+[ ] OPENCLAW SETUP SERVICE -- READY TO SELL
+    Full offer document saved: LEADS\openclaw_setup_service_offer.txt
+    Pricing: ,500 standard / ,000 first 5 clients (testimonials)
+    Add-ons: ,500/agent, /integration
+    Retainer: ,000-,500/month
+    ROI for client: payback in 6-8 weeks, 4-10x 12-month ROI
+    First 5 clients goal: ,000 total + 5 case studies
+    Outreach: Facebook groups, LinkedIn, X, warm network, content agency upsell
+
+[ ] REVIEW AI NATIVE BUSINESS POSITIONING
+    Key insight from transcripts: Agency-first is the right approach for Kyle.
+    Get clients manually -> prove the model -> productize with AI (which is already built)
+    Kyle already has the productized system. He just needs to get clients.
+    The factory IS the fulfillment engine. This is the business.
+
+[ ] CONTENT AGENCY ROI CALCULATOR
+    Build a version for content agency pitch:
+    "You currently spend X hours/month on social media. At your effective hourly rate that is .
+    We handle all of it for -,500/month. Payback period: immediate."
+    Say "build ROI calculator" and I'll create the template.
+
+
+==============================================
+OPENCLAW OPTIMIZATIONS FROM TRANSCRIPTS
+Added: 2026-03-17
+==============================================
+
+[ ] CHANGE HEARTBEAT MODEL TO HAIKU 4.5
+    Current: Heartbeat runs on Sonnet (expensive for every 15-30 min)
+    Fix: Tell Forge "change the heartbeat model to haiku 4.5"
+    Why: Haiku is 10x cheaper. Heartbeat only reads a file -- doesn't need Sonnet.
+    Do this after VPS is set up.
+
+[ ] CONNECT CHATGPT SUBSCRIPTION TO OPENCLAW (free model usage)
+    If you have ChatGPT /month: you can use GPT-5.3 Codex inside OpenClaw at no extra cost.
+    Steps:
+    1. In terminal: openclaw onboard-off choice openacc
+    2. Open the URL in browser
+    3. Sign in with ChatGPT account
+    4. Paste returned URL back into terminal
+    5. Set alias "codex" for app development tasks
+    Use Codex for: InkedHeal, KilnLog, RevLog, CatchLog builds -- better at coding, zero extra cost.
+    Do this on the VPS after setup.
+
+[ ] SET UP CRON JOBS FOR WEEKLY AUTOMATION
+    Create these cron jobs by telling Forge in plain English (after VPS is live):
+    -- "Cron: every Monday 9am -- generate weekly pipeline report"
+    -- "Cron: every Tuesday 8am -- remind Kyle to post on X before 9-11am window"
+    -- "Cron: every Sunday 8am -- run podcast research agent"
+    -- "Cron: every day 9am -- run morning briefing"
+    -- "Cron: every day 5pm -- run evening summary"
+
+================
+END ULTIMATE MASTER TO-DO LIST
+================
+================
+UPDATED: 2026-03-17 afternoon
+================
+
+COMPLETED TODAY:
+[x] Processed 15+ YouTube transcripts -- 39.1 KB intelligence saved
+[x] Populated USER.md (3.8 KB -- was blank)
+[x] Created MEMORY.md (3.3 KB -- was missing entirely)
+[x] Created personal/ and business/ goals folders in workspace
+[x] Updated TOOLS.md with slash commands + Perplexity upgrade instructions
+[x] HEARTBEAT.md rebuilt v2 with Felix 3-tier monitoring model
+[x] GAME_PLAN.txt created (4.9 KB -- 4-phase activation sequence)
+[x] VPS architecture documented (PLANS/vps_architecture.txt)
+[x] 8 new X posts generated from transcript intelligence (batch_X_8posts_2026-03-17.txt)
+[x] 3 Clawart skills packaged (LEADS/clawart_skills/) -- $97, $147, $67
+[x] GitHub backup setup script created (setup_github_backup.ps1)
+[x] run_backup.ps1 updated with GitHub sync (commented, ready to uncomment)
+[x] Year 1 revenue model added to OpenClaw setup service offer doc
+[x] Stream 14 (Skills Marketplace) added to vision board
+[x] Productization roadmap documented
+[x] Felix case study fully documented ($1,500 in -> $165K out)
+[x] Nightly self-improvement cron documented and ready to deploy on VPS
+
+NEW ITEMS ADDED:
+[ ] Set up GitHub private repo for factory backup (use setup_github_backup.ps1)
+[ ] Sign up for Clawart creator subscription ($20/month at clawhub.com)
+[ ] List 3 packaged skills on Clawart (files in LEADS/clawart_skills/)
+[ ] Post batch_X_8posts_2026-03-17.txt -- spread over 4-5 days, 1-2/day
+[ ] Oracle Cloud free tier signup (cloud.oracle.com) OR Hostinger KVM2 ($7.99/mo)
+[ ] Run setup_github_backup.ps1 once GitHub account/repo is ready
+
+
+================
+UPDATED: 2026-03-17 -- 3pm block
+================
+
+COMPLETED THIS BLOCK:
+[x] WORKFLOW_AUTO.md created (startup protocol file)
+[x] REVENUE_ARCHITECTURE.txt written -- full ladder Tier 1-5 +  path
+[x] Product A: 30 AI Agent Prompts v1.0 () -- WRITTEN + HTML version
+[x] Product B: Business Content OS v1.0 () -- WRITTEN
+[x] Product C: AI Business Operator's Playbook v1.0 () -- WRITTEN
+[x] Product D: OpenClaw Setup Blueprint v1.0 () -- WRITTEN
+[x] Gumroad listing copy for all 4 products -- WRITTEN, ready to paste
+[x] Launch content: 12 posts for all products (X + Facebook) -- WRITTEN
+[x] Buyer email sequences: 4 sequences + monthly universal -- WRITTEN
+[x] API Service concept (PlaybookAPI) -- DOCUMENTED
+[x] Custom LLM for businesses concept -- DOCUMENTED
+[x] OpenClaw Marketplace roadmap -- DOCUMENTED
+[x] Website plan -- DOCUMENTED
+
+KYLE ACTION ITEMS (do when back from work):
+[ ] Create Gumroad account at app.gumroad.com
+[ ] Upload 4 product files from factory\PRODUCTS\digital_products\
+[ ] Paste listing descriptions from GUMROAD_LISTING_COPY_ALL_PRODUCTS.txt
+[ ] Enable "pay what you want" on all 4 products
+[ ] Create bundle: all 3 entry products = 
+[ ] Create Kit account at kit.com (free)
+[ ] Post first launch post (POST C1 or C2 from LAUNCH_CONTENT_ALL_PRODUCTS.txt)
+[ ] Set up Zapier: Gumroad sale -> Kit subscriber
+
+STILL IN PROGRESS (Forge continuing autonomously):
+[ ] Convert product .txt files to polished HTML/PDF format
+[ ] Build Clawart skill listings (3 skills already written, need listing copy)
+[ ] Build ROK Financial DM outreach drafts (warm lead plays)
+[ ] Research trending AI/business topics for next content batch
+[ ] Build subscription product concept doc (/month prompt updates)
