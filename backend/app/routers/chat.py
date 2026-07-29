@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from .. import claude_client
+from .. import agent, claude_client
 from ..db import get_db
 from ..memory import build_system_blocks
 from ..models import CheckInSession, utcnow
-from ..schemas import ChatRequest, ChatResponse, ChatUsage
+from ..schemas import ChatRequest, ChatResponse, ChatUsage, ToolAction
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -45,69 +45,101 @@ def _to_api_messages(req: ChatRequest) -> list[dict]:
     return messages
 
 
+def _actions_out(outcomes) -> list[ToolAction]:
+    return [
+        ToolAction(name=o.name, ok=o.ok, summary=o.summary or o.message, entity=o.entity)
+        for o in outcomes
+    ]
+
+
 @router.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
-    """One coaching turn, non-streaming. The simplest way to confirm the loop works."""
+    """One coaching turn, non-streaming.
+
+    Runs the full tool loop, so the reply comes back after any to-do list changes have
+    already been committed.
+    """
     session = _get_or_create_session(db, req.session_id)
 
     try:
-        message = claude_client.chat(build_system_blocks(db), _to_api_messages(req))
-    except claude_client.ClaudeNotConfigured as exc:
-        raise HTTPException(503, str(exc)) from exc
+        result = agent.run_turn(db, build_system_blocks(db), _to_api_messages(req))
+    except agent.ModelRefused as exc:
+        raise HTTPException(502, str(exc)) from exc
 
-    if message.stop_reason == "refusal":
-        raise HTTPException(502, "The model declined to respond to that.")
+    _record_turns(db, session, req.message, result.reply)
 
-    reply = claude_client.text_of(message)
-    _record_turns(db, session, req.message, reply)
-
-    usage = message.usage
+    usage = result.usage
     return ChatResponse(
         session_id=session.id,
-        reply=reply,
-        usage=ChatUsage(
-            input_tokens=usage.input_tokens,
-            output_tokens=usage.output_tokens,
-            cache_creation_input_tokens=usage.cache_creation_input_tokens or 0,
-            cache_read_input_tokens=usage.cache_read_input_tokens or 0,
+        reply=result.reply,
+        actions=_actions_out(result.actions),
+        usage=(
+            ChatUsage(
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
+                cache_creation_input_tokens=usage.cache_creation_input_tokens or 0,
+                cache_read_input_tokens=usage.cache_read_input_tokens or 0,
+            )
+            if usage is not None
+            else None
         ),
     )
 
 
 @router.post("/chat/stream")
 def chat_stream(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
-    """Same turn, streamed as SSE so the UI can render tokens as they land."""
+    """Same turn, streamed as SSE.
+
+    Emits `delta` events for text and `action` events whenever a tool changes something,
+    so the UI can show the to-do list updating mid-reply.
+    """
     session = _get_or_create_session(db, req.session_id)
     system_blocks = build_system_blocks(db)
     api_messages = _to_api_messages(req)
     session_id = session.id
 
+    def sse(event: str, payload: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
     def events() -> Iterator[str]:
-        yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
+        yield sse("session", {"session_id": session_id})
 
-        chunks: list[str] = []
-        try:
-            for delta in claude_client.chat_stream(system_blocks, api_messages):
-                chunks.append(delta)
-                yield f"event: delta\ndata: {json.dumps({'text': delta})}\n\n"
-        except claude_client.ClaudeNotConfigured as exc:
-            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
-            return
-        except Exception as exc:  # surface upstream failures to the client, then stop
-            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
-            return
-
-        reply = "".join(chunks).strip()
-        # Fresh DB session: the request-scoped one may be closed by the time the
-        # generator finishes streaming.
+        reply = ""
+        # Tools commit as they run, so this generator needs its own DB session — the
+        # request-scoped one can be closed before streaming finishes.
         from ..db import SessionLocal
+
+        try:
+            with SessionLocal() as work_db:
+                for item in agent.stream_turn(work_db, system_blocks, api_messages):
+                    if isinstance(item, agent.Delta):
+                        yield sse("delta", {"text": item.text})
+                    elif isinstance(item, agent.Action):
+                        o = item.outcome
+                        yield sse(
+                            "action",
+                            {
+                                "name": o.name,
+                                "ok": o.ok,
+                                "summary": o.summary or o.message,
+                                "entity": o.entity,
+                            },
+                        )
+                    else:  # Final
+                        reply = item.reply
+        except claude_client.ClaudeNotConfigured as exc:
+            yield sse("error", {"message": str(exc)})
+            return
+        except Exception as exc:  # surface upstream failures, then stop cleanly
+            yield sse("error", {"message": str(exc)})
+            return
 
         with SessionLocal() as write_db:
             stored = write_db.get(CheckInSession, session_id)
             if stored is not None:
                 _record_turns(write_db, stored, req.message, reply)
 
-        yield f"event: done\ndata: {json.dumps({'session_id': session_id})}\n\n"
+        yield sse("done", {"session_id": session_id})
 
     return StreamingResponse(
         events(),
@@ -135,10 +167,7 @@ def close_session(session_id: int, db: Session = Depends(get_db)) -> dict:
     if not transcript.strip():
         raise HTTPException(400, "nothing to summarize")
 
-    try:
-        recap, commitments = claude_client.summarize_session(transcript)
-    except claude_client.ClaudeNotConfigured as exc:
-        raise HTTPException(503, str(exc)) from exc
+    recap, commitments = claude_client.summarize_session(transcript)
 
     summary = Summary(session_id=session.id, recap=recap, commitments="\n".join(commitments))
     session.ended_at = utcnow()

@@ -278,6 +278,20 @@ body {
   color: var(--muted);
 }
 
+/* Inline note when the coach changes a goal or task mid-reply. */
+.action {
+  align-self: flex-start;
+  margin: 0;
+  padding-left: 0.1rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.action--failed {
+  color: var(--accent);
+}
+
 /* --- composer --- */
 
 .composer {

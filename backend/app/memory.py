@@ -9,11 +9,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .config import get_settings
-from .models import CheckInSession, Goal, GoalStatus, Horizon, Summary, Task, TaskStatus
+from . import crud
+from .models import CheckInSession, Goal, Horizon, Summary, Task
 from .prompts import COACH_PERSONA, build_state_block
 
 HORIZON_LABELS = {
@@ -79,23 +78,6 @@ def _format_summaries(summaries: list[Summary]) -> str:
     return "\n".join(lines).strip()
 
 
-def load_goals(db: Session) -> list[Goal]:
-    stmt = select(Goal).where(Goal.status == GoalStatus.active).order_by(Goal.created_at)
-    return list(db.scalars(stmt))
-
-
-def load_open_tasks(db: Session) -> list[Task]:
-    stmt = select(Task).where(Task.status == TaskStatus.open).order_by(Task.due.is_(None), Task.due, Task.created_at)
-    return list(db.scalars(stmt))
-
-
-def load_recent_summaries(db: Session, limit: int | None = None) -> list[Summary]:
-    limit = limit or get_settings().recent_summary_count
-    stmt = select(Summary).order_by(Summary.created_at.desc()).limit(limit)
-    newest_first = list(db.scalars(stmt))
-    return list(reversed(newest_first))  # chronological reads better in the prompt
-
-
 def build_system_blocks(db: Session) -> list[dict]:
     """Two blocks, two cache breakpoints.
 
@@ -108,9 +90,9 @@ def build_system_blocks(db: Session) -> list[dict]:
     `usage.cache_read_input_tokens` on responses — if it's always 0, the persona is too
     short to cache rather than something being misconfigured.
     """
-    goals = load_goals(db)
-    tasks = load_open_tasks(db)
-    summaries = load_recent_summaries(db)
+    goals = crud.list_goals(db, active_only=True)
+    tasks = crud.list_tasks(db, open_only=True)
+    summaries = crud.list_recent_summaries(db)
 
     state = build_state_block(
         goals_block=_format_goals(goals),

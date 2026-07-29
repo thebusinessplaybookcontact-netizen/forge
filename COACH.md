@@ -12,11 +12,14 @@ a deliberately plain UI. Voice and the design pass come later (see Build order).
 backend/            FastAPI. Holds the Claude key. Does the memory glue.
   app/
     prompts.py      The coach's personality. The ONLY place it lives.
+    tools.py        Tool schemas + argument validation + dispatch.
+    agent.py        The tool_use -> execute -> tool_result loop.
+    crud.py         Every DB mutation. Shared by the HTTP routes and the tools.
     memory.py       Assembles what the model sees (see Memory design).
     claude_client.py Every Claude call goes through here.
     models.py       goals / tasks / sessions / summaries
     routers/        chat.py (chat + session close), goals.py (goals, tasks, dashboard)
-  tests/            Chat loop tested with the Claude call stubbed out.
+  tests/            Tool loop and chat tested with the API stubbed, DB writes real.
 frontend/           React + Vite, installable as a PWA.
   src/pages/        Home (dashboard + chat box), Chat, Goals, Settings
 Dockerfile          Builds the PWA and serves it from the API as one service.
@@ -79,6 +82,50 @@ the persona is currently around 800. Until the state block grows (more goals, ta
 recaps), caching may not engage at all. Check `usage.cache_read_input_tokens` on a chat
 response — if it's always 0, that's why, not a misconfiguration.
 
+## Tools — the coach changes things itself
+
+The coach doesn't just read the to-do list, it edits it. Say "add call the accountant to
+today" or "mark the workout done" and the change is committed before the reply comes
+back.
+
+| Tool | Arguments | Notes |
+| --- | --- | --- |
+| `add_task` | `text`, `linked_goal_id?`, `due?` | `due` is `YYYY-MM-DD`; today's date is in the prompt so the model resolves "today" itself |
+| `complete_task` | `task_id` | |
+| `update_task` | `task_id`, `text?`, `due?`, `status?`, `linked_goal_id?` | Only supplied fields change. `due: null` clears the date |
+| `delete_task` | `task_id` | For tasks that shouldn't exist. If it was actually done, `complete_task` keeps it on the record |
+| `add_goal` | `text`, `horizon`, `why?` | `horizon` is `daily`/`weekly`/`lifetime` |
+| `update_goal` | `goal_id`, `text?`, `why?`, `horizon?`, `status?` | Only supplied fields change |
+
+Schemas live in `backend/app/tools.py`, so the persona prompt stays about tone and the
+tool descriptions stay about behaviour.
+
+**How a turn runs** (`backend/app/agent.py`): call the API → if `stop_reason` is
+`tool_use`, execute *every* `tool_use` block in the response, append the assistant turn
+plus **one** user message containing all the `tool_result` blocks, and call again. Repeat
+until the model stops asking for tools, capped at `MAX_TOOL_ITERATIONS` (6) since each
+iteration is a billed request. Chained calls in a single turn work — "did the workout and
+add a massage" is two calls in one response.
+
+**Errors go back to the model, not to a stack trace.** Arguments are validated with
+Pydantic before anything touches the database, and a bad task id, a malformed date, or a
+hallucinated argument name all come back as a `tool_result` with `is_error: true` and a
+readable message. The model can then correct itself or tell you what failed. Nothing is
+written on a rejected call.
+
+**One implementation of the DB logic.** `crud.py` owns every mutation; the tools and the
+Goals screen's HTTP routes both call it. The tools are not a second path into the
+database.
+
+Tool definitions render *before* the system prompt, so they're part of the cached prefix
+— `TOOL_DEFINITIONS` order is deliberately stable, and reordering it silently invalidates
+the prompt cache. A test asserts the order.
+
+Note that tool blocks are not replayed in later turns' history: a `tool_use` only has to
+be answered within the turn it happened in. Subsequent turns see the *result* of the
+change, because the current goals and tasks are re-rendered into the system prompt each
+time.
+
 ## The personality
 
 All of it is in `backend/app/prompts.py`. There are no hardcoded coaching lines anywhere
@@ -93,8 +140,8 @@ Goals screen the way you'd actually say them. The seeded ones are placeholders.
 | --- | --- | --- |
 | `GET` | `/api/health` | Liveness + whether the key is configured |
 | `GET` | `/api/dashboard` | Goals, open tasks, recent recaps — one call for Home |
-| `POST` | `/api/chat` | One coaching turn (JSON) |
-| `POST` | `/api/chat/stream` | Same turn, streamed as SSE |
+| `POST` | `/api/chat` | One coaching turn (JSON). Returns `actions[]` — what the coach changed |
+| `POST` | `/api/chat/stream` | Same turn as SSE: `session`, `delta`, `action`, `done`, `error` events |
 | `POST` | `/api/sessions/{id}/close` | End session, write its recap |
 | | `/api/goals`, `/api/tasks` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`) |
 
@@ -114,6 +161,7 @@ before there's data worth keeping.
 2. ~~Minimal chat UI~~ ✅
 3. ~~Goals/tasks CRUD + dashboard~~ ✅ (functional, not designed)
 4. ~~Session summaries + memory loading~~ ✅
+4b. ~~Tool use — the coach edits goals and tasks from conversation~~ ✅
 5. Voice — STT in, human TTS out, with the toggle. The Settings toggle saves its
    preference already; nothing is wired to speech yet.
 6. Deploy hosted — Dockerfile and railway.json are ready.
@@ -128,8 +176,10 @@ literal quest/game layer.
   the schema matters.
 - **No auth.** Anyone with the URL can talk to your coach and spend your tokens. Fine on
   a private URL; not fine indefinitely.
-- **The coach can't yet edit your to-do list.** It reads goals and tasks and talks about
-  them, but updating them from conversation needs tool use — that's the next backend
-  piece worth building.
+- **No undo.** The coach deletes and overwrites for real, and a misheard sentence is a
+  lost task. `delete_task` is the one to watch. Worth adding a soft-delete or an undo
+  window before voice lands, since speech recognition will misfire more than typing does.
+- **The dashboard doesn't live-update.** Chat emits `action` events and the Chat screen
+  shows them inline, but Home only refetches when you navigate to it.
 - **Nothing is designed yet.** The CSS is a restrained baseline so the skeleton is usable
   on a phone, and should be treated as a placeholder for step 7.

@@ -25,9 +25,10 @@ from app.models import CheckInSession, Goal, Horizon, Task  # noqa: E402
 CAPTURED: dict = {}
 
 
-def fake_chat(system_blocks, messages):
+def fake_chat(system_blocks, messages, tool_defs=None):
     CAPTURED["system_blocks"] = system_blocks
     CAPTURED["messages"] = messages
+    CAPTURED["tools"] = tool_defs
     return SimpleNamespace(
         stop_reason="end_turn",
         content=[
@@ -58,7 +59,7 @@ def client(monkeypatch):
         db.add(Task(text="Draft chapter 3", linked_goal_id=goal.id))
         db.commit()
 
-    monkeypatch.setattr(claude_client, "chat", fake_chat)
+    monkeypatch.setattr(claude_client, "complete", fake_chat)
     CAPTURED.clear()
     yield TestClient(app)
     Base.metadata.drop_all(bind=engine)

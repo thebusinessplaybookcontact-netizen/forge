@@ -89,9 +89,20 @@ class ChatUsage(BaseModel):
     cache_read_input_tokens: int = 0
 
 
+class ToolAction(BaseModel):
+    """One change the coach made to goals or tasks during this turn."""
+
+    name: str
+    ok: bool
+    summary: str
+    entity: dict | None = None
+
+
 class ChatResponse(BaseModel):
     session_id: int
     reply: str
+    # What the coach actually changed, in the order it happened.
+    actions: list[ToolAction] = Field(default_factory=list)
     usage: ChatUsage | None = None
 
 

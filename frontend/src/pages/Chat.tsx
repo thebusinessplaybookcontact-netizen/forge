@@ -5,7 +5,7 @@ import Composer from "../components/Composer";
 import { useChat } from "../useChat";
 
 export default function Chat() {
-  const { turns, streaming, busy, error, send } = useChat();
+  const { entries, streaming, busy, error, send } = useChat();
   const bottom = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,9 +23,9 @@ export default function Chat() {
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [turns, streaming]);
+  }, [entries, streaming]);
 
-  const empty = turns.length === 0 && !streaming;
+  const empty = entries.length === 0 && !streaming;
 
   return (
     <div className="chat">
@@ -36,11 +36,21 @@ export default function Chat() {
           </p>
         )}
 
-        {turns.map((turn, i) => (
-          <div key={i} className={`bubble bubble--${turn.role}`}>
-            {turn.content}
-          </div>
-        ))}
+        {entries.map((entry, i) =>
+          entry.kind === "turn" ? (
+            <div key={i} className={`bubble bubble--${entry.role}`}>
+              {entry.content}
+            </div>
+          ) : (
+            <p
+              key={i}
+              className={`action${entry.action.ok ? "" : " action--failed"}`}
+              title={entry.action.name}
+            >
+              {entry.action.ok ? "✓" : "✕"} {entry.action.summary}
+            </p>
+          ),
+        )}
 
         {streaming && <div className="bubble bubble--assistant">{streaming}</div>}
         {busy && !streaming && <div className="bubble bubble--assistant bubble--thinking">…</div>}

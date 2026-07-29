@@ -1,20 +1,27 @@
 import { useCallback, useRef, useState } from "react";
 
-import { streamChat } from "./api";
+import { streamChat, type ToolActionEvent } from "./api";
 import type { ChatTurn } from "./types";
 
+/** A turn, or a note about something the coach changed while replying. */
+export type Entry =
+  | { kind: "turn"; role: "user" | "assistant"; content: string }
+  | { kind: "action"; action: ToolActionEvent };
+
 /**
- * The chat loop. Owns the turn list, the streaming assistant reply, and the
+ * The chat loop. Owns the entry list, the streaming assistant reply, and the
  * session id the backend assigns on the first message.
  *
- * Only the current session's turns are sent back up. Everything older reaches the
- * model as a summary, assembled server-side — see backend/app/memory.py.
+ * Only the current session's *turns* are sent back up — action notes are display-only,
+ * and everything older than this session reaches the model as a summary. See
+ * backend/app/memory.py.
  */
 export function useChat() {
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [streaming, setStreaming] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [changed, setChanged] = useState(0);
   const sessionId = useRef<number | null>(null);
 
   const send = useCallback(
@@ -25,8 +32,11 @@ export function useChat() {
       setError(null);
       setBusy(true);
       // Snapshot history *before* adding this turn — the backend appends it itself.
-      const history = turns;
-      setTurns((prev) => [...prev, { role: "user", content: text }]);
+      const history: ChatTurn[] = entries
+        .filter((e): e is Extract<Entry, { kind: "turn" }> => e.kind === "turn")
+        .map((e) => ({ role: e.role, content: e.content }));
+
+      setEntries((prev) => [...prev, { kind: "turn", role: "user", content: text }]);
       setStreaming("");
 
       let reply = "";
@@ -41,6 +51,21 @@ export function useChat() {
               reply += delta;
               setStreaming(reply);
             },
+            onAction: (action) => {
+              // Flush any text streamed before the tool call so ordering survives.
+              setEntries((prev) => {
+                const next = [...prev];
+                if (reply.trim()) {
+                  next.push({ kind: "turn", role: "assistant", content: reply.trim() });
+                  reply = "";
+                }
+                next.push({ kind: "action", action });
+                return next;
+              });
+              setStreaming("");
+              // Signals screens showing goals/tasks that their data is now stale.
+              setChanged((n) => n + 1);
+            },
             onError: (msg) => setError(msg),
           },
         );
@@ -49,13 +74,13 @@ export function useChat() {
       }
 
       if (reply.trim()) {
-        setTurns((prev) => [...prev, { role: "assistant", content: reply.trim() }]);
+        setEntries((prev) => [...prev, { kind: "turn", role: "assistant", content: reply.trim() }]);
       }
       setStreaming("");
       setBusy(false);
     },
-    [busy, turns],
+    [busy, entries],
   );
 
-  return { turns, streaming, busy, error, send, sessionId };
+  return { entries, streaming, busy, error, send, sessionId, changed };
 }

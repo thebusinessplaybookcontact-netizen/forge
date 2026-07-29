@@ -7,7 +7,6 @@ streaming behaviour are configured in exactly one place.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from functools import lru_cache
 
 import anthropic
@@ -46,36 +45,41 @@ def _text_of(message) -> str:
     return "".join(b.text for b in message.content if b.type == "text").strip()
 
 
-def chat(system_blocks: list[dict], messages: list[dict]):
-    """One coaching turn. Returns the raw SDK Message so callers can read usage."""
+def _request_kwargs(system_blocks: list[dict], messages: list[dict], tools: list[dict] | None) -> dict:
     settings = get_settings()
-    client = get_client()
+    kwargs: dict = {
+        "model": settings.claude_model,
+        "max_tokens": settings.claude_max_tokens,
+        "system": system_blocks,
+        "messages": messages,
+        "output_config": {"effort": settings.claude_effort},
+    }
+    if tools:
+        kwargs["tools"] = tools
+    return kwargs
 
-    # Streaming under the hood even for the non-streaming endpoint: it keeps the HTTP
-    # connection alive on slow turns instead of risking a timeout.
-    with client.messages.stream(
-        model=settings.claude_model,
-        max_tokens=settings.claude_max_tokens,
-        system=system_blocks,
-        messages=messages,
-        output_config={"effort": settings.claude_effort},
-    ) as stream:
+
+def complete(system_blocks: list[dict], messages: list[dict], tools: list[dict] | None = None):
+    """One request/response against the API. Returns the raw SDK Message.
+
+    This is the single seam the whole agent loop runs through, which is also what the
+    tests patch — everything above it (the tool loop, validation, the DB writes) stays
+    real under test.
+
+    Streams under the hood even though it returns a whole message: it keeps the
+    connection alive on slow turns instead of risking an HTTP timeout.
+    """
+    with get_client().messages.stream(**_request_kwargs(system_blocks, messages, tools)) as stream:
         return stream.get_final_message()
 
 
-def chat_stream(system_blocks: list[dict], messages: list[dict]) -> Iterator[str]:
-    """Yields text deltas as they arrive, for the live chat UI."""
-    settings = get_settings()
-    client = get_client()
+def stream_message(system_blocks: list[dict], messages: list[dict], tools: list[dict] | None = None):
+    """Context manager yielding the live stream, for the SSE endpoint.
 
-    with client.messages.stream(
-        model=settings.claude_model,
-        max_tokens=settings.claude_max_tokens,
-        system=system_blocks,
-        messages=messages,
-        output_config={"effort": settings.claude_effort},
-    ) as stream:
-        yield from stream.text_stream
+    Callers iterate `.text_stream` for deltas and then call `.get_final_message()` to
+    find out whether the turn ended in tool use.
+    """
+    return get_client().messages.stream(**_request_kwargs(system_blocks, messages, tools))
 
 
 def summarize_session(transcript: str) -> tuple[str, list[str]]:

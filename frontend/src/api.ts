@@ -37,9 +37,18 @@ export const closeSession = (id: number) =>
     method: "POST",
   });
 
+export interface ToolActionEvent {
+  name: string;
+  ok: boolean;
+  summary: string;
+  entity: Record<string, unknown> | null;
+}
+
 export interface StreamHandlers {
   onSession?: (sessionId: number) => void;
   onDelta: (text: string) => void;
+  /** Fired when the coach changes a goal or task mid-reply. */
+  onAction?: (action: ToolActionEvent) => void;
   onDone?: (sessionId: number) => void;
   onError?: (message: string) => void;
 }
@@ -90,6 +99,7 @@ export async function streamChat(
       const payload = JSON.parse(data);
       if (event === "session") handlers.onSession?.(payload.session_id);
       else if (event === "delta") handlers.onDelta(payload.text);
+      else if (event === "action") handlers.onAction?.(payload as ToolActionEvent);
       else if (event === "done") handlers.onDone?.(payload.session_id);
       else if (event === "error") handlers.onError?.(payload.message);
     }
