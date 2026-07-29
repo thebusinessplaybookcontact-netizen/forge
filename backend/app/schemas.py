@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+Horizon = Literal["daily", "weekly", "lifetime"]
+GoalStatus = Literal["active", "paused", "done"]
+TaskStatus = Literal["open", "done"]
+
+
+# --- Goals ---
+
+
+class GoalCreate(BaseModel):
+    text: str
+    horizon: Horizon
+    why: str | None = None
+    status: GoalStatus = "active"
+
+
+class GoalUpdate(BaseModel):
+    text: str | None = None
+    horizon: Horizon | None = None
+    why: str | None = None
+    status: GoalStatus | None = None
+
+
+class GoalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    text: str
+    horizon: Horizon
+    why: str | None
+    status: GoalStatus
+    created_at: datetime
+
+
+# --- Tasks ---
+
+
+class TaskCreate(BaseModel):
+    text: str
+    linked_goal_id: int | None = None
+    status: TaskStatus = "open"
+    due: date | None = None
+
+
+class TaskUpdate(BaseModel):
+    text: str | None = None
+    linked_goal_id: int | None = None
+    status: TaskStatus | None = None
+    due: date | None = None
+
+
+class TaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    text: str
+    linked_goal_id: int | None
+    status: TaskStatus
+    due: date | None
+    created_at: datetime
+
+
+# --- Chat ---
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1)
+    session_id: int | None = None
+    # Turns from the current session only. Prior sessions come back as summaries,
+    # never as replayed transcripts.
+    history: list[ChatTurn] = Field(default_factory=list)
+
+
+class ChatUsage(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+
+
+class ChatResponse(BaseModel):
+    session_id: int
+    reply: str
+    usage: ChatUsage | None = None
+
+
+# --- Sessions & summaries ---
+
+
+class SummaryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    session_id: int
+    recap: str
+    commitments: str
+    created_at: datetime
+
+
+class SessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    started_at: datetime
+    ended_at: datetime | None
+
+
+class DashboardOut(BaseModel):
+    goals: list[GoalOut]
+    open_tasks: list[TaskOut]
+    recent_summaries: list[SummaryOut]

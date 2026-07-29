@@ -1,0 +1,46 @@
+export type Horizon = "daily" | "weekly" | "lifetime";
+export type GoalStatus = "active" | "paused" | "done";
+export type TaskStatus = "open" | "done";
+
+export interface Goal {
+  id: number;
+  text: string;
+  horizon: Horizon;
+  why: string | null;
+  status: GoalStatus;
+  created_at: string;
+}
+
+export interface Task {
+  id: number;
+  text: string;
+  linked_goal_id: number | null;
+  status: TaskStatus;
+  due: string | null;
+  created_at: string;
+}
+
+export interface Summary {
+  id: number;
+  session_id: number;
+  recap: string;
+  commitments: string;
+  created_at: string;
+}
+
+export interface Dashboard {
+  goals: Goal[];
+  open_tasks: Task[];
+  recent_summaries: Summary[];
+}
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export type VoiceMode = "human" | "browser";
+
+export interface AppSettings {
+  voiceMode: VoiceMode;
+}
