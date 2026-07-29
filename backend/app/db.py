@@ -26,8 +26,34 @@ def get_db() -> Iterator[Session]:
         db.close()
 
 
+#  table  -> column -> DDL type
+#
+# create_all() only creates missing *tables*, so a column added to an existing model is
+# invisible to a database that predates it — every query then fails with "no such
+# column". Until this earns Alembic, new columns go here.
+_ADDED_COLUMNS: dict[str, dict[str, str]] = {
+    "goals": {"deleted_at": "DATETIME"},
+    "tasks": {"deleted_at": "DATETIME"},
+}
+
+
+def _backfill_columns() -> None:
+    if engine.dialect.name != "sqlite":
+        # Anything else gets real migrations; don't hand-roll ALTERs for it.
+        return
+
+    with engine.begin() as conn:
+        for table, columns in _ADDED_COLUMNS.items():
+            existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            if not existing:
+                continue  # table didn't exist; create_all just made it correctly
+            for column, ddl in columns.items():
+                if column not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+
+
 def init_db() -> None:
-    """Create tables if they don't exist.
+    """Create tables if they don't exist, then add any columns they're missing.
 
     Scaffold-level only — there are no migrations yet. Once the schema stabilises,
     swap this for Alembic before there is data worth keeping.
@@ -35,3 +61,4 @@ def init_db() -> None:
     from . import models  # noqa: F401  (registers mappers)
 
     Base.metadata.create_all(bind=engine)
+    _backfill_columns()

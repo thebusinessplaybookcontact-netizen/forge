@@ -1,25 +1,34 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 
 import { getDashboard, updateTask } from "../api";
+import { useChatContext } from "../ChatContext";
+import ActionNote from "../components/ActionNote";
 import Composer from "../components/Composer";
 import type { Dashboard } from "../types";
 
 export default function Home() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const { entries, streaming, busy, send, undo, changed } = useChatContext();
 
-  useEffect(() => {
-    getDashboard().then(setData).catch((e) => setError(String(e)));
+  const load = useCallback(() => {
+    getDashboard()
+      .then(setData)
+      .catch((e) => setError(String(e)));
   }, []);
+
+  // Refetch on mount, then every time the coach changes something. `changed` only
+  // increments on an actual tool action or undo, so this is event-driven — no polling.
+  useEffect(load, [load, changed]);
 
   async function complete(id: number) {
     await updateTask(id, { status: "done" });
-    setData((prev) =>
-      prev ? { ...prev, open_tasks: prev.open_tasks.filter((t) => t.id !== id) } : prev,
-    );
+    load();
   }
+
+  // The tail of the conversation, so talking from this screen is useful without
+  // leaving it. The full transcript lives on /chat.
+  const recent = entries.slice(-4);
 
   return (
     <div className="home">
@@ -58,11 +67,21 @@ export default function Home() {
       )}
 
       <section className="home__composer">
-        {/* Hand the first message to the Chat screen so the conversation lives in one place. */}
-        <Composer
-          onSend={(message) => navigate("/chat", { state: { message } })}
-          placeholder="Talk to your coach…"
-        />
+        {recent.length > 0 && (
+          <div className="home__tail">
+            {recent.map((entry, i) =>
+              entry.kind === "turn" ? (
+                <p key={i} className={`tail tail--${entry.role}`}>
+                  {entry.content}
+                </p>
+              ) : (
+                <ActionNote key={i} entry={entry} onUndo={undo} />
+              ),
+            )}
+            {streaming && <p className="tail tail--assistant">{streaming}</p>}
+          </div>
+        )}
+        <Composer onSend={send} disabled={busy} placeholder="Talk to your coach…" />
       </section>
     </div>
   );

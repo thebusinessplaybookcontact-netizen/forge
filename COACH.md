@@ -93,9 +93,11 @@ back.
 | `add_task` | `text`, `linked_goal_id?`, `due?` | `due` is `YYYY-MM-DD`; today's date is in the prompt so the model resolves "today" itself |
 | `complete_task` | `task_id` | |
 | `update_task` | `task_id`, `text?`, `due?`, `status?`, `linked_goal_id?` | Only supplied fields change. `due: null` clears the date |
-| `delete_task` | `task_id` | For tasks that shouldn't exist. If it was actually done, `complete_task` keeps it on the record |
+| `delete_task` | `task_id` | Soft delete, reversible. If it was actually done, `complete_task` keeps it on the record |
 | `add_goal` | `text`, `horizon`, `why?` | `horizon` is `daily`/`weekly`/`lifetime` |
 | `update_goal` | `goal_id`, `text?`, `why?`, `horizon?`, `status?` | Only supplied fields change |
+| `delete_goal` | `goal_id` | Soft delete, reversible. Prefer `status: done`/`paused` |
+| `undo_last` | — | Reverses the most recent deletion, so "undo" works by voice |
 
 Schemas live in `backend/app/tools.py`, so the persona prompt stays about tone and the
 tool descriptions stay about behaviour.
@@ -126,6 +128,33 @@ be answered within the turn it happened in. Subsequent turns see the *result* of
 change, because the current goals and tasks are re-rendered into the system prompt each
 time.
 
+## Nothing is ever really deleted
+
+Voice will mishear things, and a deleted task shouldn't be a lost task. So there are no
+hard deletes anywhere in the app:
+
+- `delete_task` and `delete_goal` set `deleted_at` instead of removing the row.
+- **Every read filters soft-deleted rows out.** That's the safety property — code that
+  forgets `deleted_at` exists gets the safe behaviour by default, because seeing a
+  deleted row requires asking for it explicitly (`get_task(..., include_deleted=True)`).
+  A deleted goal also disappears from the state block the model sees.
+- Each delete writes an `undo_entries` row. Within `COACH_UNDO_WINDOW_SECONDS`
+  (default 300) it can be reversed — say "undo" and the coach calls `undo_last`, or tap
+  **Undo** on the action note in the chat. Each entry is single-use.
+- A deleted goal's tasks keep pointing at it, so an undo restores the goal completely. A
+  task whose goal is deleted simply shows no goal.
+
+The undo log lives in the database rather than process memory so it survives a restart
+and doesn't depend on which worker handled the original request.
+
+Past the window, the row is still there — it just isn't offered as a one-tap undo any
+more, and can be restored by hand. **Soft-deleted rows are never purged**, which is the
+point, but it does mean the tables only grow.
+
+Undo currently covers deletions only. Reversing a field edit would mean snapshotting the
+before-state on every update; `UndoEntry.action` exists so that can be added without a
+migration.
+
 ## The personality
 
 All of it is in `backend/app/prompts.py`. There are no hardcoded coaching lines anywhere
@@ -143,7 +172,9 @@ Goals screen the way you'd actually say them. The seeded ones are placeholders.
 | `POST` | `/api/chat` | One coaching turn (JSON). Returns `actions[]` — what the coach changed |
 | `POST` | `/api/chat/stream` | Same turn as SSE: `session`, `delta`, `action`, `done`, `error` events |
 | `POST` | `/api/sessions/{id}/close` | End session, write its recap |
-| | `/api/goals`, `/api/tasks` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`) |
+| | `/api/goals`, `/api/tasks` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`). `DELETE` is soft and returns `undo_id` |
+| `POST` | `/api/undo` | Reverse the most recent deletion |
+| `POST` | `/api/undo/{undo_id}` | Reverse one specific change (410 if the window has passed) |
 
 ## Deploying
 
@@ -162,6 +193,7 @@ before there's data worth keeping.
 3. ~~Goals/tasks CRUD + dashboard~~ ✅ (functional, not designed)
 4. ~~Session summaries + memory loading~~ ✅
 4b. ~~Tool use — the coach edits goals and tasks from conversation~~ ✅
+4c. ~~Soft delete + undo, and a live-updating dashboard~~ ✅
 5. Voice — STT in, human TTS out, with the toggle. The Settings toggle saves its
    preference already; nothing is wired to speech yet.
 6. Deploy hosted — Dockerfile and railway.json are ready.
@@ -172,14 +204,14 @@ literal quest/game layer.
 
 ## Known gaps
 
-- **No migrations.** Tables are created with `create_all` on startup. Add Alembic before
-  the schema matters.
+- **No migrations.** Tables come from `create_all` on startup, and columns added to an
+  existing model are patched in by `_ADDED_COLUMNS` in `db.py` (SQLite `ALTER TABLE`).
+  That's a stopgap, not a migration system — add Alembic before the schema matters.
 - **No auth.** Anyone with the URL can talk to your coach and spend your tokens. Fine on
   a private URL; not fine indefinitely.
-- **No undo.** The coach deletes and overwrites for real, and a misheard sentence is a
-  lost task. `delete_task` is the one to watch. Worth adding a soft-delete or an undo
-  window before voice lands, since speech recognition will misfire more than typing does.
-- **The dashboard doesn't live-update.** Chat emits `action` events and the Chat screen
-  shows them inline, but Home only refetches when you navigate to it.
+- **Soft-deleted rows are never purged.** Deliberate, but the tables only grow. A
+  "permanently forget this" path will eventually be wanted.
+- **Undo covers deletions, not edits.** If the coach rewords a task wrongly, there's no
+  one-tap way back.
 - **Nothing is designed yet.** The CSS is a restrained baseline so the skeleton is usable
   on a phone, and should be treated as a placeholder for step 7.

@@ -96,6 +96,8 @@ class ToolAction(BaseModel):
     ok: bool
     summary: str
     entity: dict | None = None
+    # Present when the change is reversible; the UI shows an Undo affordance for it.
+    undo_id: int | None = None
 
 
 class ChatResponse(BaseModel):

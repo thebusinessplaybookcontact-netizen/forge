@@ -47,7 +47,13 @@ def _to_api_messages(req: ChatRequest) -> list[dict]:
 
 def _actions_out(outcomes) -> list[ToolAction]:
     return [
-        ToolAction(name=o.name, ok=o.ok, summary=o.summary or o.message, entity=o.entity)
+        ToolAction(
+            name=o.name,
+            ok=o.ok,
+            summary=o.summary or o.message,
+            entity=o.entity,
+            undo_id=o.undo_id,
+        )
         for o in outcomes
     ]
 
@@ -123,6 +129,7 @@ def chat_stream(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingRes
                                 "ok": o.ok,
                                 "summary": o.summary or o.message,
                                 "entity": o.entity,
+                                "undo_id": o.undo_id,
                             },
                         )
                     else:  # Final

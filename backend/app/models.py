@@ -41,6 +41,9 @@ class Goal(Base):
     why: Mapped[str | None] = mapped_column(Text, default=None)
     status: Mapped[GoalStatus] = mapped_column(Enum(GoalStatus), default=GoalStatus.active)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Soft delete. Nothing in this app removes a row — a misheard sentence should never
+    # be unrecoverable. Set means "deleted"; normal reads filter these out.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     tasks: Mapped[list[Task]] = relationship(back_populates="goal")
 
@@ -54,8 +57,31 @@ class Task(Base):
     status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.open)
     due: Mapped[date | None] = mapped_column(Date, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     goal: Mapped[Goal | None] = relationship(back_populates="tasks")
+
+
+class UndoEntry(Base):
+    """One reversible change, recorded so it can be taken back.
+
+    Lives in the database rather than in process memory so an undo survives a restart
+    and works regardless of which worker handled the original request — the SSE
+    generator already runs on its own session.
+    """
+
+    __tablename__ = "undo_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Only "delete" today. The column exists so restoring other operations later
+    # doesn't need a migration.
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)  # "task" | "goal"
+    target_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    # What was affected, so "undo" can say what it put back without re-reading the row.
+    label: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
 class CheckInSession(Base):

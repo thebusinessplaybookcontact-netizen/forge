@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # --- Storage ---
     database_url: str = f"sqlite:///{BACKEND_DIR / 'coach.db'}"
 
+    # --- Undo ---
+    # How long after a delete you can still take it back. Soft-deleted rows are never
+    # purged, so this bounds the *undo affordance*, not recoverability by hand.
+    undo_window_seconds: int = 300
+
     # --- Memory window ---
     # How many recent session summaries get loaded into context. Bounded on purpose:
     # transcripts are never replayed, only these recaps.

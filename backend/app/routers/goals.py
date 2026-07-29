@@ -60,12 +60,14 @@ def update_goal(goal_id: int, payload: GoalUpdate, db: Session = Depends(get_db)
         raise _not_found(exc) from exc
 
 
-@router.delete("/goals/{goal_id}", status_code=204)
-def delete_goal(goal_id: int, db: Session = Depends(get_db)) -> None:
+@router.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db)) -> dict:
+    """Soft delete. Returns the undo id so the caller can offer to take it back."""
     try:
-        crud.delete_goal(db, goal_id)
+        _, undo = crud.delete_goal(db, goal_id)
     except crud.NotFound as exc:
         raise _not_found(exc) from exc
+    return {"undo_id": undo.id}
 
 
 # --- Tasks ---
@@ -93,9 +95,40 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
         raise _not_found(exc) from exc
 
 
-@router.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: int, db: Session = Depends(get_db)) -> None:
+@router.delete("/tasks/{task_id}")
+def delete_task(task_id: int, db: Session = Depends(get_db)) -> dict:
+    """Soft delete. Returns the undo id so the caller can offer to take it back."""
     try:
-        crud.delete_task(db, task_id)
+        _, undo = crud.delete_task(db, task_id)
     except crud.NotFound as exc:
         raise _not_found(exc) from exc
+    return {"undo_id": undo.id}
+
+
+# --- Undo ---
+
+
+@router.post("/undo")
+def undo_latest(db: Session = Depends(get_db)) -> dict:
+    """Reverse the most recent deletion. Backs the 'undo' the coach can also do by voice."""
+    return _undo(db, None)
+
+
+@router.post("/undo/{undo_id}")
+def undo_specific(undo_id: int, db: Session = Depends(get_db)) -> dict:
+    """Reverse one specific change, so the Undo button on an older action note is exact."""
+    return _undo(db, undo_id)
+
+
+def _undo(db: Session, undo_id: int | None) -> dict:
+    try:
+        entry = crud.apply_undo(db, undo_id)
+    except crud.NotFound as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except crud.UndoExpired as exc:
+        # Gone, but not because the request was malformed.
+        raise HTTPException(410, str(exc)) from exc
+    return {
+        "undo_id": entry.id,
+        "restored": {"type": entry.target_type, "id": entry.target_id, "label": entry.label},
+    }

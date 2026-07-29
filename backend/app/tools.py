@@ -97,9 +97,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "delete_task",
         "description": (
-            "Remove a task entirely. Use this when it shouldn't have existed or no longer "
-            "matters. If Kyle actually did it, use complete_task instead so it stays on "
-            "the record."
+            "Remove a task from the list. Use this when it shouldn't have existed or no "
+            "longer matters. If Kyle actually did it, use complete_task instead so it "
+            "stays on the record. This is reversible — undo_last puts it back."
         ),
         "input_schema": {
             "type": "object",
@@ -150,6 +150,29 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["goal_id"],
         },
     },
+    {
+        "name": "delete_goal",
+        "description": (
+            "Remove a goal from the list. Reversible via undo_last. Prefer update_goal "
+            "with status 'done' when he achieved it, or 'paused' when he's deliberately "
+            "setting it aside — deleting is for goals that were a mistake to record."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"goal_id": {"type": "integer"}},
+            "required": ["goal_id"],
+        },
+    },
+    {
+        "name": "undo_last",
+        "description": (
+            "Reverse the most recent deletion. Use this when Kyle says 'undo', 'never "
+            "mind', 'put that back', or otherwise signals the last change was wrong — "
+            "including when he's correcting a misheard instruction. Don't ask him to "
+            "confirm, just do it and say what came back."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
 ]
 
 TOOL_NAMES = frozenset(t["name"] for t in TOOL_DEFINITIONS)
@@ -187,6 +210,14 @@ class DeleteTask(BaseModel, extra="forbid"):
     task_id: int
 
 
+class DeleteGoal(BaseModel, extra="forbid"):
+    goal_id: int
+
+
+class UndoLast(BaseModel, extra="forbid"):
+    pass
+
+
 class AddGoal(BaseModel, extra="forbid"):
     text: str = Field(min_length=1)
     horizon: Literal["daily", "weekly", "lifetime"]
@@ -217,6 +248,8 @@ class ToolOutcome:
     # Short human-facing line for the chat transcript.
     summary: str = ""
     entity: dict | None = field(default=None)
+    # Set when this change can be taken back. Drives the Undo button on the action note.
+    undo_id: int | None = None
 
     @property
     def is_error(self) -> bool:
@@ -262,6 +295,8 @@ def execute(db: Session, name: str, raw_input: dict) -> ToolOutcome:
         )
         return ToolOutcome(name, False, f"Invalid arguments — {problems}")
     except crud.NotFound as exc:
+        return ToolOutcome(name, False, str(exc))
+    except crud.UndoExpired as exc:
         return ToolOutcome(name, False, str(exc))
     except crud.CrudError as exc:
         return ToolOutcome(name, False, str(exc))
@@ -309,12 +344,35 @@ def _dispatch(db: Session, name: str, raw: dict) -> ToolOutcome:
 
     if name == "delete_task":
         args = DeleteTask.model_validate(raw)
-        task = crud.delete_task(db, args.task_id)
+        task, undo = crud.delete_task(db, args.task_id)
         return ToolOutcome(
             name,
             True,
-            f"Deleted task {args.task_id}: {task.text}",
+            f"Deleted task {task.id}: {task.text}. Reversible with undo_last.",
             summary=f"Deleted “{task.text}”",
+            undo_id=undo.id,
+        )
+
+    if name == "delete_goal":
+        args = DeleteGoal.model_validate(raw)
+        goal, undo = crud.delete_goal(db, args.goal_id)
+        return ToolOutcome(
+            name,
+            True,
+            f"Deleted goal {goal.id}: {goal.text}. Reversible with undo_last.",
+            summary=f"Deleted goal “{goal.text}”",
+            undo_id=undo.id,
+        )
+
+    if name == "undo_last":
+        UndoLast.model_validate(raw)
+        entry = crud.apply_undo(db)
+        noun = "goal" if entry.target_type == "goal" else "task"
+        return ToolOutcome(
+            name,
+            True,
+            f"Restored {noun} {entry.target_id}: {entry.label}",
+            summary=f"Restored {noun} “{entry.label}”",
         )
 
     if name == "add_goal":

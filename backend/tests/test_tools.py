@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import claude_client, tools  # noqa: E402
+from app import claude_client, crud, tools  # noqa: E402
 from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Goal, GoalStatus, Horizon, Task, TaskStatus  # noqa: E402
@@ -193,10 +193,35 @@ def test_delete_task(client, monkeypatch, seeded):
         message([text("Gone.")], "end_turn"),
     )
 
-    say(client, "that one doesn't matter, drop it")
+    body = say(client, "that one doesn't matter, drop it")
 
     with SessionLocal() as db:
-        assert db.get(Task, seeded["accountant"]) is None
+        # Soft delete: the row survives, reads stop seeing it.
+        row = db.get(Task, seeded["accountant"])
+        assert row is not None and row.deleted_at is not None
+        assert seeded["accountant"] not in [t.id for t in crud.list_tasks(db)]
+
+    # The action note carries an undo handle.
+    assert body["actions"][0]["undo_id"] is not None
+
+
+def test_delete_goal(client, monkeypatch, seeded):
+    script(
+        monkeypatch,
+        message([tool_use("delete_goal", {"goal_id": seeded["goal"]})], "tool_use"),
+        message([text("Dropped.")], "end_turn"),
+    )
+
+    body = say(client, "drop the fitness goal, it was a mistake")
+
+    with SessionLocal() as db:
+        row = db.get(Goal, seeded["goal"])
+        assert row is not None and row.deleted_at is not None
+        assert crud.list_goals(db) == []
+        # Linked tasks keep their link so an undo restores the goal completely.
+        assert db.get(Task, seeded["workout"]).linked_goal_id == seeded["goal"]
+
+    assert body["actions"][0]["undo_id"] is not None
 
 
 def test_add_goal(client, monkeypatch):
@@ -307,6 +332,8 @@ def test_tools_are_sent_on_every_request(client, monkeypatch, seeded):
         "delete_task",
         "add_goal",
         "update_goal",
+        "delete_goal",
+        "undo_last",
     ], "tool order must stay stable — reordering invalidates the prompt cache"
     assert all("input_schema" in t and t["description"] for t in sent)
 

@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 
-import { streamChat, type ToolActionEvent } from "./api";
+import { streamChat, undoChange, type ToolActionEvent } from "./api";
 import type { ChatTurn } from "./types";
 
 /** A turn, or a note about something the coach changed while replying. */
 export type Entry =
   | { kind: "turn"; role: "user" | "assistant"; content: string }
-  | { kind: "action"; action: ToolActionEvent };
+  | { kind: "action"; action: ToolActionEvent; undone?: boolean };
 
 /**
  * The chat loop. Owns the entry list, the streaming assistant reply, and the
@@ -82,5 +82,20 @@ export function useChat() {
     [busy, entries],
   );
 
-  return { entries, streaming, busy, error, send, sessionId, changed };
+  /** Take back a change, then let the dashboard know its data moved again. */
+  const undo = useCallback(async (undoId: number) => {
+    try {
+      await undoChange(undoId);
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.kind === "action" && e.action.undo_id === undoId ? { ...e, undone: true } : e,
+        ),
+      );
+      setChanged((n) => n + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
+
+  return { entries, streaming, busy, error, send, undo, sessionId, changed };
 }

@@ -292,6 +292,39 @@ body {
   color: var(--accent);
 }
 
+.action__undo {
+  margin-left: 0.55rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.action__undone {
+  font-style: italic;
+}
+
+/* Tail of the conversation shown under the composer on Home. */
+.home__tail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.tail {
+  margin: 0;
+  font-size: 0.94rem;
+}
+
+.tail--user {
+  color: var(--muted);
+}
+
 /* --- composer --- */
 
 .composer {

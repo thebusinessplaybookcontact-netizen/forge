@@ -11,13 +11,13 @@ model can read and recover from.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import Goal, GoalStatus, Horizon, Summary, Task, TaskStatus
+from .models import Goal, GoalStatus, Horizon, Summary, Task, TaskStatus, UndoEntry, utcnow
 
 
 class CrudError(Exception):
@@ -28,32 +28,40 @@ class NotFound(CrudError):
     pass
 
 
+class UndoExpired(CrudError):
+    pass
+
+
 # --- Reads ---
+#
+# Soft-deleted rows are invisible to every read below. That's the whole safety property:
+# code that forgets about deleted_at gets the safe behaviour by default, because the
+# only way to see a deleted row is to ask for it explicitly.
 
 
-def get_goal(db: Session, goal_id: int) -> Goal:
+def get_goal(db: Session, goal_id: int, *, include_deleted: bool = False) -> Goal:
     goal = db.get(Goal, goal_id)
-    if goal is None:
+    if goal is None or (goal.deleted_at is not None and not include_deleted):
         raise NotFound(f"No goal with id {goal_id}.")
     return goal
 
 
-def get_task(db: Session, task_id: int) -> Task:
+def get_task(db: Session, task_id: int, *, include_deleted: bool = False) -> Task:
     task = db.get(Task, task_id)
-    if task is None:
+    if task is None or (task.deleted_at is not None and not include_deleted):
         raise NotFound(f"No task with id {task_id}.")
     return task
 
 
 def list_goals(db: Session, *, active_only: bool = False) -> list[Goal]:
-    stmt = select(Goal)
+    stmt = select(Goal).where(Goal.deleted_at.is_(None))
     if active_only:
         stmt = stmt.where(Goal.status == GoalStatus.active)
     return list(db.scalars(stmt.order_by(Goal.created_at)))
 
 
 def list_tasks(db: Session, *, open_only: bool = False) -> list[Task]:
-    stmt = select(Task)
+    stmt = select(Task).where(Task.deleted_at.is_(None))
     if open_only:
         stmt = stmt.where(Task.status == TaskStatus.open)
     # Dated tasks first, soonest first, then undated by age.
@@ -106,13 +114,25 @@ def update_goal(db: Session, goal_id: int, fields: dict) -> Goal:
     return goal
 
 
-def delete_goal(db: Session, goal_id: int) -> Goal:
+def delete_goal(db: Session, goal_id: int) -> tuple[Goal, UndoEntry]:
+    """Soft delete. The row stays; reads stop seeing it.
+
+    Linked tasks keep pointing at it deliberately — nulling them out would make an undo
+    only half restore the goal. A task whose goal is deleted simply shows no goal.
+    """
     goal = get_goal(db, goal_id)
-    # Orphan the tasks rather than deleting them — they may still be worth doing.
-    for task in goal.tasks:
-        task.linked_goal_id = None
-    db.delete(goal)
+    goal.deleted_at = utcnow()
+    undo = _record_undo(db, action="delete", target_type="goal", target_id=goal.id, label=goal.text)
     db.commit()
+    db.refresh(goal)
+    return goal, undo
+
+
+def restore_goal(db: Session, goal_id: int) -> Goal:
+    goal = get_goal(db, goal_id, include_deleted=True)
+    goal.deleted_at = None
+    db.commit()
+    db.refresh(goal)
     return goal
 
 
@@ -163,8 +183,94 @@ def complete_task(db: Session, task_id: int) -> Task:
     return update_task(db, task_id, {"status": TaskStatus.done})
 
 
-def delete_task(db: Session, task_id: int) -> Task:
+def delete_task(db: Session, task_id: int) -> tuple[Task, UndoEntry]:
+    """Soft delete. The row stays; reads stop seeing it."""
     task = get_task(db, task_id)
-    db.delete(task)
+    task.deleted_at = utcnow()
+    undo = _record_undo(db, action="delete", target_type="task", target_id=task.id, label=task.text)
     db.commit()
+    db.refresh(task)
+    return task, undo
+
+
+def restore_task(db: Session, task_id: int) -> Task:
+    task = get_task(db, task_id, include_deleted=True)
+    task.deleted_at = None
+    db.commit()
+    db.refresh(task)
     return task
+
+
+# --- Undo ---
+
+
+def _record_undo(db: Session, *, action: str, target_type: str, target_id: int, label: str) -> UndoEntry:
+    entry = UndoEntry(action=action, target_type=target_type, target_id=target_id, label=label)
+    db.add(entry)
+    db.flush()  # populate entry.id without committing; the caller commits
+    return entry
+
+
+def _age_seconds(moment: datetime) -> float:
+    # SQLite hands back naive datetimes even from a timezone=True column, so normalise
+    # before comparing or this raises on the subtraction.
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - moment).total_seconds()
+
+
+def _window() -> int:
+    return get_settings().undo_window_seconds
+
+
+def latest_undoable(db: Session) -> UndoEntry | None:
+    """The most recent change that hasn't been undone yet, if it's still in window."""
+    entry = db.scalars(
+        select(UndoEntry).where(UndoEntry.undone_at.is_(None)).order_by(UndoEntry.created_at.desc()).limit(1)
+    ).first()
+    if entry is None or _age_seconds(entry.created_at) > _window():
+        return None
+    return entry
+
+
+def apply_undo(db: Session, undo_id: int | None = None) -> UndoEntry:
+    """Reverse a change. Defaults to the most recent one.
+
+    Raises NotFound when there's nothing to undo and UndoExpired when the window has
+    passed — the caller distinguishes them because "nothing to undo" and "too late" mean
+    different things to the person asking.
+    """
+    if undo_id is None:
+        entry = db.scalars(
+            select(UndoEntry).where(UndoEntry.undone_at.is_(None)).order_by(UndoEntry.created_at.desc()).limit(1)
+        ).first()
+        if entry is None:
+            raise NotFound("There's nothing to undo.")
+    else:
+        entry = db.get(UndoEntry, undo_id)
+        if entry is None:
+            raise NotFound(f"No undo entry with id {undo_id}.")
+        if entry.undone_at is not None:
+            raise NotFound("That change was already undone.")
+
+    age = _age_seconds(entry.created_at)
+    if age > _window():
+        raise UndoExpired(
+            f"That was {int(age // 60)} minutes ago, past the {_window() // 60}-minute undo window. "
+            "The row still exists though — it can be restored by hand."
+        )
+
+    if entry.action != "delete":
+        raise CrudError(f"Don't know how to undo a '{entry.action}'.")
+
+    if entry.target_type == "task":
+        restore_task(db, entry.target_id)
+    elif entry.target_type == "goal":
+        restore_goal(db, entry.target_id)
+    else:
+        raise CrudError(f"Don't know how to undo a '{entry.target_type}'.")
+
+    entry.undone_at = utcnow()
+    db.commit()
+    db.refresh(entry)
+    return entry

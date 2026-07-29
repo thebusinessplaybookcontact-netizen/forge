@@ -42,7 +42,18 @@ export interface ToolActionEvent {
   ok: boolean;
   summary: string;
   entity: Record<string, unknown> | null;
+  /** Present when the change can be taken back. */
+  undo_id: number | null;
 }
+
+export interface UndoResult {
+  undo_id: number;
+  restored: { type: string; id: number; label: string };
+}
+
+/** Reverse a change. Omit the id to undo the most recent one. */
+export const undoChange = (undoId?: number) =>
+  request<UndoResult>(undoId == null ? "/undo" : `/undo/${undoId}`, { method: "POST" });
 
 export interface StreamHandlers {
   onSession?: (sessionId: number) => void;

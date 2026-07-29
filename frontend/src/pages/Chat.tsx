@@ -1,17 +1,18 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { useChatContext } from "../ChatContext";
+import ActionNote from "../components/ActionNote";
 import Composer from "../components/Composer";
-import { useChat } from "../useChat";
 
 export default function Chat() {
-  const { entries, streaming, busy, error, send } = useChat();
+  const { entries, streaming, busy, error, send, undo } = useChatContext();
   const bottom = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const seeded = useRef(false);
 
-  // Home's composer hands the first message over via router state.
+  // Home's composer can hand a first message over via router state.
   useEffect(() => {
     const initial = (location.state as { message?: string } | null)?.message;
     if (initial && !seeded.current) {
@@ -42,13 +43,7 @@ export default function Chat() {
               {entry.content}
             </div>
           ) : (
-            <p
-              key={i}
-              className={`action${entry.action.ok ? "" : " action--failed"}`}
-              title={entry.action.name}
-            >
-              {entry.action.ok ? "✓" : "✕"} {entry.action.summary}
-            </p>
+            <ActionNote key={i} entry={entry} onUndo={undo} />
           ),
         )}
 
