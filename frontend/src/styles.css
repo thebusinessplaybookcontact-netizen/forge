@@ -1,20 +1,116 @@
-/* Baseline only — restrained, one accent, generous spacing. The real design pass
-   comes later (build step 7, with the frontend-design skill). Nothing here should be
-   treated as final. */
+/* Goal Coach — design tokens and components.
+ *
+ * Direction: cool graphite neutrals, one accent (deep petrol green), and a single
+ * structural idea — the coach's own words are set in a reading serif while everything
+ * you *operate* is set in the UI sans. The voice looks different from the chrome
+ * because it is different.
+ *
+ * Themes are driven by data-theme on <html>, stamped before first paint by an inline
+ * script in index.html. Components read tokens only and never branch on theme
+ * themselves, so adding a theme means adding a token block and nothing else.
+ */
 
 :root {
-  --bg: #12110f;
-  --surface: #1a1917;
-  --line: #2a2825;
-  --text: #f2efe9;
-  --muted: #918b81;
-  --accent: #e8734a;
+  color-scheme: light;
 
-  --space: 1.25rem;
-  --radius: 14px;
+  /* Neutrals are biased cool toward the accent rather than being pure grey. */
+  --ground: #f7f8f7;
+  --raised: #ffffff;
+  --sunken: #eceeed;
+  --line: #dde1df;
+  --line-strong: #c6ccc9;
 
-  --sans: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
-  --serif: ui-serif, Georgia, "Iowan Old Style", serif;
+  --ink: #14181a;
+  --ink-soft: #59615e;
+  --ink-faint: #878f8c;
+
+  /* The single accent. Used for interaction only. */
+  --accent: #17695a;
+  --accent-hover: #125548;
+  --accent-on: #ffffff;
+  --accent-wash: #e3efeb;
+
+  /* Semantic, deliberately not the accent — state must not read as interaction. */
+  --danger: #9a3b2f;
+  --danger-wash: #f6e7e4;
+
+  --shadow: 0 1px 2px rgb(20 24 26 / 6%), 0 4px 16px rgb(20 24 26 / 4%);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Not near-black: a desaturated green-slate that keeps the accent at home. */
+  --ground: #101413;
+  --raised: #171c1b;
+  --sunken: #1c2221;
+  --line: #262d2c;
+  --line-strong: #38403e;
+
+  --ink: #e9eeec;
+  --ink-soft: #9aa4a1;
+  --ink-faint: #6e7876;
+
+  --accent: #5fc0a3;
+  --accent-hover: #77cfb4;
+  --accent-on: #0b1210;
+  --accent-wash: #16302a;
+
+  --danger: #e08072;
+  --danger-wash: #33201d;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 16px rgb(0 0 0 / 24%);
+}
+
+/* No-JS / pre-hydration fallback so the OS preference still lands. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --ground: #101413;
+    --raised: #171c1b;
+    --sunken: #1c2221;
+    --line: #262d2c;
+    --line-strong: #38403e;
+    --ink: #e9eeec;
+    --ink-soft: #9aa4a1;
+    --ink-faint: #6e7876;
+    --accent: #5fc0a3;
+    --accent-hover: #77cfb4;
+    --accent-on: #0b1210;
+    --accent-wash: #16302a;
+    --danger: #e08072;
+    --danger-wash: #33201d;
+  }
+}
+
+:root {
+  /* Type: UI face for anything you operate, reading face for the coach's voice. */
+  --ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    sans-serif;
+  --read: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  --t-xs: 0.75rem;
+  --t-sm: 0.8125rem;
+  --t-ui: 0.9375rem;
+  --t-body: 1.0625rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.75rem;
+
+  /* One spacing scale; layout uses gap, not per-element margins. */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+
+  --tap: 44px; /* minimum comfortable touch target */
 }
 
 * {
@@ -29,203 +125,304 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 17px;
-  line-height: 1.55;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: var(--t-ui);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------------------------------------------------------------- shell */
 
 .app {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-width: 46rem;
+  max-width: 34rem;
   margin: 0 auto;
+  background: var(--ground);
 }
 
 .app__main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: calc(var(--space) * 1.5) var(--space);
-  padding-top: max(calc(var(--space) * 1.5), env(safe-area-inset-top));
+  padding: var(--s5) var(--s4) var(--s6);
+  padding-top: max(var(--s5), env(safe-area-inset-top));
 }
-
-/* --- nav --- */
 
 .nav {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  padding-bottom: max(var(--s2), env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
-  padding: 0.5rem var(--space);
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-  background: var(--bg);
+  background: var(--raised);
 }
 
 .nav__link {
   flex: 1;
-  text-align: center;
-  padding: 0.6rem 0.25rem;
-  border-radius: 10px;
-  color: var(--muted);
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  font-weight: 500;
   text-decoration: none;
-  font-size: 0.9rem;
+  transition: color 120ms ease, background-color 120ms ease;
 }
 
 .nav__link--active {
-  color: var(--text);
-  background: var(--surface);
+  color: var(--ink);
+  background: var(--sunken);
 }
 
-/* --- headings & panels --- */
+/* ---------------------------------------------------------- typography */
 
 .home__header {
-  margin-bottom: calc(var(--space) * 1.5);
+  margin-bottom: var(--s5);
 }
 
 .home__title {
-  font-family: var(--serif);
-  font-size: 2rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
   margin: 0;
+  font-size: var(--t-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .panel {
-  margin-bottom: calc(var(--space) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s6);
 }
 
 .panel__title {
-  font-size: 0.78rem;
+  margin: 0;
+  font-size: var(--t-xs);
   font-weight: 600;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
-  margin: 0 0 0.85rem;
+  color: var(--ink-faint);
 }
 
 .muted {
-  color: var(--muted);
-  margin: 0.35rem 0;
+  margin: 0;
+  color: var(--ink-soft);
 }
 
-/* --- tasks --- */
+/* The coach's remembered summary is its voice, so it gets the reading face. */
+.recap {
+  margin: 0;
+  font-family: var(--read);
+  font-size: var(--t-body);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* -------------------------------------------------------------- tasks */
 
 .tasks {
-  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px; /* hairline separation via the row background, not borders */
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .tasks__item {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  padding: 0.7rem 0;
-  border-bottom: 1px solid var(--line);
+  gap: var(--s3);
+  min-height: var(--tap);
+  padding: var(--s2) 0;
+}
+
+.tasks__item + .tasks__item {
+  border-top: 1px solid var(--line);
 }
 
 .tasks__check {
   flex: none;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line-strong);
   border-radius: 50%;
-  border: 1.5px solid var(--muted);
   background: none;
   cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.tasks__check:hover {
+  border-color: var(--accent);
 }
 
 .tasks__check--done {
-  background: var(--accent);
   border-color: var(--accent);
+  background: var(--accent);
 }
 
 .tasks__text {
   flex: 1;
+  min-width: 0;
 }
 
 .tasks__text--done {
-  color: var(--muted);
+  color: var(--ink-faint);
   text-decoration: line-through;
 }
 
-.tasks__due {
-  color: var(--muted);
-  font-size: 0.8rem;
+/* State reads as a chip, so what needs attention is visible without reading dates. */
+.chip {
+  flex: none;
+  padding: 2px var(--s2);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  background: var(--sunken);
 }
 
-/* --- goals --- */
+.chip--today {
+  color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.chip--overdue {
+  color: var(--danger);
+  background: var(--danger-wash);
+}
+
+/* -------------------------------------------------------------- goals */
 
 .goal {
-  padding: 0.7rem 0;
-  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s3) 0;
+}
+
+.goal + .goal {
+  border-top: 1px solid var(--line);
 }
 
 .goal__text {
   margin: 0;
+  font-weight: 500;
 }
 
+/* The "why" is in Kyle's own words, so it's set as speech rather than as UI text. */
 .goal__why {
-  margin: 0.3rem 0 0;
-  color: var(--muted);
-  font-family: var(--serif);
-  font-style: italic;
+  margin: 0;
+  font-family: var(--read);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  color: var(--ink-soft);
 }
 
-/* --- forms --- */
+/* -------------------------------------------------------------- forms */
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 1rem;
+  gap: var(--s2);
+  margin-top: var(--s2);
 }
 
 .input {
   width: 100%;
-  padding: 0.7rem 0.85rem;
-  border-radius: 10px;
+  min-height: var(--tap);
+  padding: var(--s2) var(--s3);
   border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  color: var(--ink);
   font: inherit;
-  font-size: 16px; /* keeps iOS from zooming on focus */
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+  transition: border-color 120ms ease;
+}
+
+.input:hover {
+  border-color: var(--line-strong);
 }
 
 .button {
   align-self: flex-start;
-  padding: 0.6rem 1.1rem;
-  border-radius: 10px;
+  min-height: var(--tap);
+  padding: 0 var(--s4);
   border: none;
+  border-radius: var(--r-md);
   background: var(--accent);
-  color: #1a0d06;
-  font: inherit;
+  color: var(--accent-on);
+  font-size: var(--t-ui);
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.button:hover {
+  background: var(--accent-hover);
 }
 
 .choice {
   display: flex;
-  gap: 0.75rem;
   align-items: flex-start;
-  padding: 0.7rem 0;
-  border-bottom: 1px solid var(--line);
+  gap: var(--s3);
+  padding: var(--s3) 0;
   cursor: pointer;
+}
+
+.choice + .choice {
+  border-top: 1px solid var(--line);
+}
+
+.choice input {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex: none;
+  margin-top: 2px;
 }
 
 .choice__label {
   display: block;
+  font-weight: 500;
 }
 
 .choice__hint {
   display: block;
-  color: var(--muted);
-  font-size: 0.85rem;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
 }
 
-/* --- chat --- */
+code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--sunken);
+  font-size: 0.9em;
+}
+
+/* --------------------------------------------------------------- chat */
 
 .chat {
   display: flex;
@@ -239,163 +436,236 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  padding-bottom: var(--space);
+  gap: var(--s3);
+  padding-bottom: var(--s4);
 }
 
 .chat__empty {
-  color: var(--muted);
-  font-family: var(--serif);
-  font-style: italic;
   margin: auto 0;
+  padding: 0 var(--s5);
+  font-family: var(--read);
+  font-size: var(--t-body);
+  line-height: 1.55;
+  color: var(--ink-faint);
   text-align: center;
+  text-wrap: balance;
 }
 
 .chat__error {
-  color: var(--accent);
-  font-size: 0.9rem;
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--danger-wash);
+  color: var(--danger);
+  font-size: var(--t-sm);
 }
 
+/* You get a bubble; the coach gets the page. Its replies are meant to be read (or
+   heard), not scanned as chat cruft. */
 .bubble {
   max-width: 85%;
-  padding: 0.7rem 0.95rem;
-  border-radius: var(--radius);
-  white-space: pre-wrap;
   word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .bubble--user {
   align-self: flex-end;
-  background: var(--surface);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg);
+  background: var(--sunken);
 }
 
 .bubble--assistant {
   align-self: flex-start;
-  padding-left: 0;
+  max-width: 100%;
+  font-family: var(--read);
+  font-size: var(--t-body);
+  line-height: 1.55;
 }
 
 .bubble--thinking {
-  color: var(--muted);
+  color: var(--ink-faint);
 }
 
-/* Inline note when the coach changes a goal or task mid-reply. */
+/* ------------------------------------------------------------ actions */
+
 .action {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   align-self: flex-start;
   margin: 0;
-  padding-left: 0.1rem;
-  color: var(--muted);
-  font-size: 0.84rem;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+}
+
+.action__mark {
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 
-.action--failed {
-  color: var(--accent);
-}
-
-.action__undo {
-  margin-left: 0.55rem;
-  padding: 0.1rem 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: 0.78rem;
-  cursor: pointer;
+.action--failed .action__mark {
+  color: var(--danger);
 }
 
 .action__undone {
   font-style: italic;
+  color: var(--ink-faint);
 }
 
-/* Tail of the conversation shown under the composer on Home. */
-.home__tail {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
+.action__undo {
+  min-height: 28px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: none;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
 }
 
-.tail {
-  margin: 0;
-  font-size: 0.94rem;
+.action__undo:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
-.tail--user {
-  color: var(--muted);
-}
-
-/* --- composer --- */
+/* ----------------------------------------------------------- composer */
 
 .composer {
   display: flex;
-  gap: 0.6rem;
   align-items: flex-end;
-  padding-top: 0.6rem;
+  gap: var(--s2);
+  padding-top: var(--s3);
   border-top: 1px solid var(--line);
+}
+
+/* Home is short, so without this the composer floats in the middle of the screen with
+   dead space under it. Pushing it down also puts the mic in thumb reach, which is where
+   it needs to be for an app you mostly talk to. */
+.home {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.home__composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-top: auto;
+  padding-top: var(--s5);
 }
 
 .home__composer .composer {
   border-top: none;
+  padding-top: 0;
+}
+
+.home__tail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+.tail {
+  margin: 0;
+}
+
+.tail--user {
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+}
+
+.tail--assistant {
+  font-family: var(--read);
+  font-size: var(--t-body);
+  line-height: 1.55;
 }
 
 .composer__input {
   flex: 1;
-  resize: none;
+  min-height: var(--tap);
   max-height: 8rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: var(--radius);
+  padding: var(--s3);
   border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  color: var(--ink);
   font: inherit;
   font-size: 16px;
+  resize: none;
+  transition: border-color 120ms ease;
 }
 
+.composer__input:hover {
+  border-color: var(--line-strong);
+}
+
+.composer__mic,
 .composer__send {
-  padding: 0.7rem 1rem;
-  border-radius: var(--radius);
-  border: none;
-  background: var(--accent);
-  color: #1a0d06;
-  font: inherit;
-  font-weight: 600;
+  flex: none;
+  min-width: var(--tap);
+  height: var(--tap);
+  border-radius: var(--r-md);
   cursor: pointer;
-}
-
-.composer__send:disabled {
-  opacity: 0.4;
-  cursor: default;
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
 }
 
 .composer__mic {
-  flex: none;
-  width: 2.9rem;
-  height: 2.9rem;
-  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 1.05rem;
-  line-height: 1;
-  cursor: pointer;
+  background: var(--raised);
+  color: var(--ink-soft);
+}
+
+.composer__mic:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 .composer__mic--live {
-  background: var(--accent);
   border-color: var(--accent);
-  color: #1a0d06;
-  animation: mic-pulse 1.4s ease-in-out infinite;
+  background: var(--accent);
+  color: var(--accent-on);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes mic-pulse {
+.composer__send {
+  padding: 0 var(--s4);
+  border: none;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: var(--t-ui);
+  font-weight: 600;
+}
+
+.composer__send:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.composer__send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@keyframes pulse {
   50% {
-    opacity: 0.55;
+    opacity: 0.6;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .composer__mic--live {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

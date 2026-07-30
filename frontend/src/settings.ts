@@ -1,4 +1,4 @@
-import type { AppSettings, VoiceMode } from "./types";
+import type { AppSettings, ThemePref, VoiceMode } from "./types";
 
 const KEY = "coach.settings";
 
@@ -8,6 +8,7 @@ const DEFAULTS: AppSettings = {
   voiceMode: "human",
   // Off by default: the first thing a new install does shouldn't be talk at you.
   speakReplies: false,
+  theme: "system",
 };
 
 export function loadSettings(): AppSettings {
@@ -31,6 +32,12 @@ export function setVoiceMode(mode: VoiceMode): AppSettings {
 
 export function setSpeakReplies(on: boolean): AppSettings {
   const next = { ...loadSettings(), speakReplies: on };
+  saveSettings(next);
+  return next;
+}
+
+export function setTheme(theme: ThemePref): AppSettings {
+  const next = { ...loadSettings(), theme };
   saveSettings(next);
   return next;
 }

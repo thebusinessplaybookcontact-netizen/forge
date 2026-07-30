@@ -9,6 +9,27 @@ interface Props {
   autoFocus?: boolean;
 }
 
+// Inline SVG rather than an emoji: an emoji mic renders at a different size and weight
+// on every platform, and can't take the button's colour when the button goes live.
+function MicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+      <rect x="9" y="3" width="6" height="10.5" rx="3" />
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" />
+      <path d="M12 18v3" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true">
+      <rect x="6" y="6" width="12" height="12" rx="2.5" />
+    </svg>
+  );
+}
+
 export default function Composer({ onSend, disabled, placeholder, autoFocus }: Props) {
   const [value, setValue] = useState("");
 
@@ -37,7 +58,7 @@ export default function Composer({ onSend, disabled, placeholder, autoFocus }: P
             aria-label={listening ? "Stop talking" : "Talk"}
             aria-pressed={listening}
           >
-            {listening ? "■" : "🎙"}
+            {listening ? <StopIcon /> : <MicIcon />}
           </button>
         )}
         <textarea

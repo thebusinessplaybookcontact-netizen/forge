@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { loadSettings, setSpeakReplies, setVoiceMode } from "../settings";
-import type { VoiceMode } from "../types";
+import { loadSettings, setSpeakReplies, setTheme, setVoiceMode } from "../settings";
+import { applyTheme } from "../theme";
+import type { ThemePref, VoiceMode } from "../types";
 import { dictationSupported, speak, stopSpeaking } from "../voice";
+
+const THEMES: { value: ThemePref; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
 
 const OPTIONS: { value: VoiceMode; label: string; hint: string }[] = [
   { value: "human", label: "Human voice", hint: "Natural-sounding TTS. Costs money per word." },
@@ -83,6 +90,24 @@ export default function Settings() {
           </p>
         )}
         {status?.human_voice && <p className="muted">Human voice via {status.provider}.</p>}
+      </section>
+
+      <section className="panel">
+        <h2 className="panel__title">Appearance</h2>
+        {THEMES.map((t) => (
+          <label key={t.value} className="choice">
+            <input
+              type="radio"
+              name="theme"
+              checked={settings.theme === t.value}
+              onChange={() => {
+                setSettings(setTheme(t.value));
+                applyTheme(t.value);
+              }}
+            />
+            <span className="choice__label">{t.label}</span>
+          </label>
+        ))}
       </section>
 
       <section className="panel">

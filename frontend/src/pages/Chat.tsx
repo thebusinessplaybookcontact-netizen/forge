@@ -47,8 +47,13 @@ export default function Chat() {
           ),
         )}
 
-        {streaming && <div className="bubble bubble--assistant">{streaming}</div>}
-        {busy && !streaming && <div className="bubble bubble--assistant bubble--thinking">…</div>}
+        {/* Announced politely so the reply reaches a screen reader as it arrives. */}
+        <div aria-live="polite" aria-atomic="false">
+          {streaming && <div className="bubble bubble--assistant">{streaming}</div>}
+          {busy && !streaming && (
+            <div className="bubble bubble--assistant bubble--thinking">Thinking…</div>
+          )}
+        </div>
         {error && <p className="chat__error">{error}</p>}
 
         <div ref={bottom} />

@@ -129,6 +129,33 @@ be answered within the turn it happened in. Subsequent turns see the *result* of
 change, because the current goals and tasks are re-rendered into the system prompt each
 time.
 
+## Design
+
+The look is defined by tokens at the top of `frontend/src/styles.css`. Components read
+tokens and never hardcode a colour, so a palette change is one block, not a sweep.
+
+- **One accent**, a deep petrol green (`#17695A` light / `#5FC0A3` dark), used only for
+  interaction — buttons, focus, the live mic, the active tab. Neutrals are biased cool
+  toward it rather than being default grey.
+- **Semantic colour is separate from the accent.** Overdue is red because it's a state;
+  if state shared the accent, "needs attention" and "you can tap this" would look alike.
+- **Two typefaces with a rule**: the UI sans is for anything you *operate*; the reading
+  serif is only for the coach's own words — its replies, the "why" behind a goal, the
+  remembered recap. The voice looks different from the chrome because it is different.
+  Don't use the serif for headings; that dissolves the distinction.
+- **State is encoded as form, not just text.** A due date renders as a chip —
+  overdue / today / a date — so what needs attention reads without comparing dates.
+- **Both themes are first-class.** `data-theme` is stamped on `<html>` by an inline
+  script in `index.html` *before first paint*, which is why there's no flash of the wrong
+  theme; Settings offers System / Light / Dark. Every token pair passes WCAG AA
+  (checked: body ≥ 15:1, secondary ≥ 6:1, accent buttons ≥ 6.5:1, chips ≥ 5.4:1).
+- Touch targets are ≥ 44px, focus is always visible, and `prefers-reduced-motion` kills
+  every transition.
+
+Deliberately avoided: the cream-and-terracotta-with-serif-display look, near-black with a
+single acid accent, purple gradients, and emoji as iconography — the mic is inline SVG so
+it takes the button's colour and renders identically everywhere.
+
 ## Voice
 
 Tap the microphone next to the message box, talk, tap again. It sends when you stop.
@@ -260,7 +287,9 @@ was checked separately, since that's the step most likely to fail the build.
 5. ~~Voice — STT in, human TTS out, with the toggle~~ ✅
 6. Deploy hosted — config ready and the production layout verified; the actual deploy
    needs your Railway account. See Deploying.
-7. Polish pass with the frontend-design skill.
+7. ~~Design pass~~ ✅ — see Design. Note the spec called for the `frontend-design` skill;
+   no such skill exists in this environment, so the closest available design guidance was
+   used instead. Worth redoing if you get that skill later.
 
 Phase 2, not started: scheduled nudges, cheaper model routing for routine calls, the
 literal quest/game layer.
@@ -290,5 +319,6 @@ literal quest/game layer.
 - **TTS isn't streamed.** The whole reply is synthesised before playback starts, so a
   long answer has a noticeable pause. Both providers support streaming if that becomes
   annoying.
-- **Nothing is designed yet.** The CSS is a restrained baseline so the skeleton is usable
-  on a phone, and should be treated as a placeholder for step 7.
+- **The design was never seen on a real phone.** Everything was reviewed in headless
+  Chromium at 400px. Safari handles safe areas, dynamic type, and `100%` heights
+  differently — expect small fixes on first real use.

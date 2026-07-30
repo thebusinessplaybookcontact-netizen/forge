@@ -12,8 +12,11 @@ export default function ActionNote({ entry, onUndo }: Props) {
 
   return (
     <p className={`action${action.ok ? "" : " action--failed"}`} title={action.name}>
-      {action.ok ? "✓" : "✕"} {action.summary}
-      {undone && <span className="action__undone"> · undone</span>}
+      <span className="action__mark" aria-hidden="true">
+        {action.ok ? "✓" : "✕"}
+      </span>
+      <span>{action.summary}</span>
+      {undone && <span className="action__undone">undone</span>}
       {undoable && (
         <button className="action__undo" onClick={() => onUndo(action.undo_id!)} type="button">
           Undo

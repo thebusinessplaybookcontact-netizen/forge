@@ -41,8 +41,11 @@ export interface ChatTurn {
 
 export type VoiceMode = "human" | "browser";
 
+export type ThemePref = "system" | "light" | "dark";
+
 export interface AppSettings {
   voiceMode: VoiceMode;
   /** Whether the coach reads its replies aloud automatically. */
   speakReplies: boolean;
+  theme: ThemePref;
 }

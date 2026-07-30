@@ -6,6 +6,16 @@ import ActionNote from "../components/ActionNote";
 import Composer from "../components/Composer";
 import type { Dashboard } from "../types";
 
+/**
+ * Due dates carry state, not just a value — something overdue should be visible without
+ * reading and comparing dates. Both ISO strings, so lexicographic comparison is correct.
+ */
+function DueChip({ due, today }: { due: string; today: string }) {
+  const tone = due < today ? "overdue" : due === today ? "today" : "later";
+  const label = tone === "overdue" ? "overdue" : tone === "today" ? "today" : due.slice(5);
+  return <span className={`chip chip--${tone}`}>{label}</span>;
+}
+
 export default function Home() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +39,7 @@ export default function Home() {
   // The tail of the conversation, so talking from this screen is useful without
   // leaving it. The full transcript lives on /chat.
   const recent = entries.slice(-4);
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="home">
@@ -53,7 +64,7 @@ export default function Home() {
                 aria-label={`Mark "${task.text}" done`}
               />
               <span className="tasks__text">{task.text}</span>
-              {task.due && <span className="tasks__due">{task.due}</span>}
+              {task.due && <DueChip due={task.due} today={today} />}
             </li>
           ))}
         </ul>
@@ -62,7 +73,7 @@ export default function Home() {
       {data && data.recent_summaries.length > 0 && (
         <section className="panel">
           <h2 className="panel__title">Last time</h2>
-          <p className="muted">{data.recent_summaries[0].recap}</p>
+          <p className="recap">{data.recent_summaries[0].recap}</p>
         </section>
       )}
 

@@ -6,13 +6,32 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1"
     />
-    <meta name="theme-color" content="#12110f" />
+    <meta name="theme-color" content="#f7f8f7" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Coach</title>
+    <script>
+      // Set the theme before first paint. Doing this in React would flash the wrong
+      // theme for a frame on every load.
+      (function () {
+        try {
+          var pref = (JSON.parse(localStorage.getItem("coach.settings") || "{}") || {}).theme;
+          var dark =
+            pref === "dark" ||
+            ((!pref || pref === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute("content", dark ? "#101413" : "#f7f8f7");
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

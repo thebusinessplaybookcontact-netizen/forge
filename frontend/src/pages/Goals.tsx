@@ -83,7 +83,7 @@ export default function Goals() {
           <input
             className="input"
             value={goalWhy}
-            placeholder="Why does it matter? (the coach will use this)"
+            placeholder="Why does it matter?"
             onChange={(e) => setGoalWhy(e.target.value)}
           />
           <select
