@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     # purged, so this bounds the *undo affordance*, not recoverability by hand.
     undo_window_seconds: int = 300
 
+    # --- Whose "today" ---
+    # An IANA name, e.g. America/Los_Angeles. The server runs in UTC, so without this
+    # the coach thinks tomorrow has started from late afternoon onward — wrong date in
+    # the prompt, "today" resolving a day late, tasks due today shown as overdue.
+    timezone: str = "UTC"
+
     # --- Sessions ---
     # A conversation is treated as over once it's been quiet this long, at which point
     # its recap gets written. Nobody taps "done" on a voice app, so idleness is the only

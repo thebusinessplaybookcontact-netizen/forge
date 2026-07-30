@@ -7,11 +7,9 @@ recaps. Token use stays bounded no matter how long the app has been in use.
 
 from __future__ import annotations
 
-from datetime import date
-
 from sqlalchemy.orm import Session
 
-from . import crud
+from . import clock, crud
 from .models import CheckInSession, Goal, Horizon, Summary, Task
 from .prompts import COACH_PERSONA, build_state_block
 
@@ -66,7 +64,8 @@ def _format_summaries(summaries: list[Summary]) -> str:
 
     lines = []
     for s in summaries:
-        when = s.created_at.date().isoformat()
+        # Local, so "yesterday's session" is dated the way Kyle experienced it.
+        when = clock.to_local(s.created_at).date().isoformat()
         lines.append(f"### {when}")
         lines.append(s.recap)
         if s.commitments.strip():
@@ -98,7 +97,7 @@ def build_system_blocks(db: Session) -> list[dict]:
         goals_block=_format_goals(goals),
         tasks_block=_format_tasks(tasks, goals),
         summaries_block=_format_summaries(summaries),
-        today=date.today().isoformat(),
+        today=clock.today_local().isoformat(),
     )
 
     return [

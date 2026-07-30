@@ -54,6 +54,14 @@ Tests: `cd backend && .venv/bin/python -m pytest tests/`
 
 ## Configuration
 
+**Set `COACH_TIMEZONE`** to your IANA zone (e.g. `America/Los_Angeles`). It defaults to
+UTC, and for an app organised around "today" that default is actively wrong: the server
+runs in UTC, so from late afternoon onward the coach believes tomorrow has started — it
+states the wrong date, "add this for today" resolves a day late, and tasks due today
+render as overdue all evening. Timestamps are still *stored* in UTC; only presentation
+is local, so changing the zone never rewrites history. The UI reads the phone's own
+clock, so it stays right when you travel.
+
 All settings are namespaced `COACH_*` (see `backend/.env.example`). The prefix is not
 cosmetic: bare names like `CLAUDE_MODEL` and `CLAUDE_EFFORT` are used by other tooling
 and an ambient value will silently override your `.env`. `ANTHROPIC_API_KEY` is the one
@@ -302,9 +310,10 @@ origin, so there's no CORS and no second deploy to keep in sync.
 1. Point a new project at this repo. It'll pick up the Dockerfile.
 2. **Add a volume and mount it at `/data`.** Do this before the first real
    conversation — see below.
-3. Set variables: `ANTHROPIC_API_KEY` and **`COACH_PASSCODE`** (without it the deployed
-   API is open to anyone with the URL), plus `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` if
-   you want the human voice. `COACH_DATA_DIR=/data` and `COACH_CORS_ORIGINS=""` are
+3. Set variables: `ANTHROPIC_API_KEY`, **`COACH_PASSCODE`** (without it the deployed API
+   is open to anyone with the URL), and **`COACH_TIMEZONE`** (without it "today" is
+   wrong every evening), plus `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` if you want the
+   human voice. `COACH_DATA_DIR=/data` and `COACH_CORS_ORIGINS=""` are
    already baked into the image.
 4. Deploy, then open `/api/health` — `claude_configured` should be `true`, and
    `/api/voice/status` tells you whether the human voice is live.

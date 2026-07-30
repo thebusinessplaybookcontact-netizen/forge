@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getDashboard, updateTask } from "../api";
 import { useChatContext } from "../ChatContext";
+import { todayISO } from "../dates";
 import ActionNote from "../components/ActionNote";
 import Composer from "../components/Composer";
 import type { Dashboard } from "../types";
@@ -39,7 +40,7 @@ export default function Home() {
   // The tail of the conversation, so talking from this screen is useful without
   // leaving it. The full transcript lives on /chat.
   const recent = entries.slice(-4);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   return (
     <div className="home">
