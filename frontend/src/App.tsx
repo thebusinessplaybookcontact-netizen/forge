@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 
+import AuthGate from "./AuthGate";
 import { ChatProvider } from "./ChatContext";
 import Chat from "./pages/Chat";
 import Goals from "./pages/Goals";
@@ -15,33 +16,37 @@ const NAV = [
 
 export default function App() {
   return (
-    // One chat session shared by every screen: the conversation survives navigation,
-    // and Home can react to changes the coach makes.
-    <ChatProvider>
-      <div className="app">
-        <main className="app__main">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+    // Nothing below mounts until there's a session, so no screen fetches against a
+    // locked API.
+    <AuthGate>
+      {/* One chat session shared by every screen: the conversation survives
+          navigation, and Home can react to changes the coach makes. */}
+      <ChatProvider>
+        <div className="app">
+          <main className="app__main">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/goals" element={<Goals />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
 
-        <nav className="nav">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `nav__link${isActive ? " nav__link--active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-    </ChatProvider>
+          <nav className="nav">
+            {NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) => `nav__link${isActive ? " nav__link--active" : ""}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </ChatProvider>
+    </AuthGate>
   );
 }

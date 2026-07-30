@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # postgresql+psycopg://...)
     database_url: str = ""
 
+    # --- Access ---
+    # One passcode for one person. Empty means the API is open, which is fine on
+    # localhost and is exactly what you must not deploy — startup warns when it's unset.
+    passcode: str = ""
+    session_days: int = 30
+
     # --- Voice (text to speech) ---
     # Speech-to-text is the phone's own engine and costs nothing, so it needs no config.
     # This is the "human voice" half; the browser's built-in voice is the free fallback.

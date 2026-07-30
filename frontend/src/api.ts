@@ -4,16 +4,53 @@ import type { Dashboard, Goal, Task } from "./types";
 // proxies /api to the backend. Either way the Claude key stays server-side.
 const BASE = "/api";
 
+/**
+ * A session can expire mid-use, and every request is a place that can discover it.
+ * AuthGate registers here so any 401 anywhere puts the lock screen back up, rather
+ * than each caller inventing its own handling.
+ */
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
+  if (res.status === 401) {
+    onUnauthorized?.();
+    throw new Error("Locked");
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(detail || `${res.status} ${res.statusText}`);
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+}
+
+// --- auth ---
+
+export interface AuthStatus {
+  required: boolean;
+  authenticated: boolean;
+}
+
+export const getAuthStatus = () => request<AuthStatus>("/auth/status");
+export const logout = () => request<unknown>("/auth/logout", { method: "POST" });
+
+/** Returns null on success, or a message to show the user. */
+export async function login(passcode: string): Promise<string | null> {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passcode }),
+  });
+  if (res.ok) return null;
+  const detail = await res.json().catch(() => null);
+  return detail?.detail ?? `Sign in failed (${res.status})`;
 }
 
 export const getDashboard = () => request<Dashboard>("/dashboard");
@@ -80,6 +117,10 @@ export async function streamChat(
     signal,
   });
 
+  if (res.status === 401) {
+    onUnauthorized?.();
+    return;
+  }
   if (!res.ok || !res.body) {
     handlers.onError?.(`${res.status} ${res.statusText}`);
     return;

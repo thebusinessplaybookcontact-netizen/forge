@@ -192,6 +192,42 @@ button {
   background: var(--sunken);
 }
 
+/* --------------------------------------------------------------- lock */
+
+.lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--s5);
+}
+
+.lock__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  width: 100%;
+  max-width: 20rem;
+}
+
+.lock__title {
+  margin: 0;
+  font-size: var(--t-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.lock__hint {
+  margin: 0 0 var(--s2);
+  color: var(--ink-soft);
+}
+
+/* Scoped by the parent rather than relying on source order — .button sets
+   align-self: flex-start further down the file and would otherwise win. */
+.lock__form .button {
+  align-self: stretch;
+}
+
 /* ---------------------------------------------------------- typography */
 
 .home__header {

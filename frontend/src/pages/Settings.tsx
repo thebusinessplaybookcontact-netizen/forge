@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { getAuthStatus, logout } from "../api";
 import { loadSettings, setSpeakReplies, setTheme, setVoiceMode } from "../settings";
 import { applyTheme } from "../theme";
 import type { ThemePref, VoiceMode } from "../types";
@@ -27,12 +28,16 @@ interface VoiceStatus {
 export default function Settings() {
   const [settings, setSettings] = useState(loadSettings);
   const [status, setStatus] = useState<VoiceStatus | null>(null);
+  const [locking, setLocking] = useState(false);
 
   useEffect(() => {
     fetch("/api/voice/status")
       .then((r) => r.json())
       .then(setStatus)
       .catch(() => setStatus({ human_voice: false, provider: null }));
+    getAuthStatus()
+      .then((s) => setLocking(s.required))
+      .catch(() => setLocking(false));
   }, []);
 
   return (
@@ -109,6 +114,22 @@ export default function Settings() {
           </label>
         ))}
       </section>
+
+      {locking && (
+        <section className="panel">
+          <h2 className="panel__title">Access</h2>
+          <button
+            className="button"
+            type="button"
+            onClick={() => {
+              // The 401 from the next request is what raises the lock screen.
+              void logout().then(() => window.location.reload());
+            }}
+          >
+            Lock this device
+          </button>
+        </section>
+      )}
 
       <section className="panel">
         <h2 className="panel__title">Talking to it</h2>

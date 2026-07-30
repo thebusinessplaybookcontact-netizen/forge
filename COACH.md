@@ -129,6 +129,35 @@ be answered within the turn it happened in. Subsequent turns see the *result* of
 change, because the current goals and tasks are re-rendered into the system prompt each
 time.
 
+## Access
+
+One passcode, one person. This isn't a user system — the job is stopping a stranger who
+finds the URL from reading your goals or spending your credits.
+
+Set `COACH_PASSCODE` and the whole API locks; the app shows a passcode screen and
+exchanges it for a signed, HttpOnly session cookie lasting `COACH_SESSION_DAYS`
+(default 30), so you unlock a phone once. Leave it empty and the API is open, which is
+what you want on localhost — startup logs a warning and `/api/health` reports
+`"auth": "off"`, so an accidentally-open deploy is visible rather than silent.
+
+Details worth knowing:
+
+- **The signing key is derived from the passcode**, so changing it invalidates every
+  session everywhere. That's the revoke button — there's no session store to clear.
+- **Failed attempts are throttled** (5 per 5 minutes per client). A short passcode is
+  otherwise brute-forceable in seconds.
+- **Enforcement is middleware, not a per-route dependency**, so a router added later is
+  closed by default instead of relying on someone remembering. A test walks the live
+  route table and asserts every `/api/` route outside a small allowlist returns 401 —
+  it will fail the day an unprotected route appears.
+- `/api/health` stays open so platform healthchecks work; it exposes nothing but
+  liveness. The SPA shell is public too — it's a static bundle with no data in it, and
+  it has to load to draw the lock screen.
+
+Not covered: this is a lock on the front door, not defence in depth. There's no
+per-request rate limiting on the Claude endpoints, so if the passcode leaks, the cost
+ceiling is your API quota.
+
 ## Design
 
 The look is defined by tokens at the top of `frontend/src/styles.css`. Components read
@@ -247,7 +276,8 @@ origin, so there's no CORS and no second deploy to keep in sync.
 1. Point a new project at this repo. It'll pick up the Dockerfile.
 2. **Add a volume and mount it at `/data`.** Do this before the first real
    conversation — see below.
-3. Set variables: `ANTHROPIC_API_KEY`, plus `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` if
+3. Set variables: `ANTHROPIC_API_KEY` and **`COACH_PASSCODE`** (without it the deployed
+   API is open to anyone with the URL), plus `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` if
    you want the human voice. `COACH_DATA_DIR=/data` and `COACH_CORS_ORIGINS=""` are
    already baked into the image.
 4. Deploy, then open `/api/health` — `claude_configured` should be `true`, and
@@ -299,11 +329,8 @@ literal quest/game layer.
 - **No migrations.** Tables come from `create_all` on startup, and columns added to an
   existing model are patched in by `_ADDED_COLUMNS` in `db.py` (SQLite `ALTER TABLE`).
   That's a stopgap, not a migration system — add Alembic before the schema matters.
-- **No auth — read this before making the URL public.** Anyone with the link can talk to
-  your coach, read your goals, and spend your Claude and TTS credits. A hosted URL is
-  guessable in a way `localhost` isn't, so this stops being theoretical the moment you
-  deploy. Put it behind Railway's private networking, an auth proxy, or at minimum a
-  shared secret before sharing the link anywhere.
+- **No per-request cost limiting.** The passcode keeps strangers out, but nothing caps
+  spend if it leaks — or if you just talk a lot. Your API quota is the only ceiling.
 - **react-router advisory GHSA-qwww-vcr4-c8h2** (high) is open with no fix published —
   it's flagged as fixed in >8.2.0 and the latest release is 7.18.2. It concerns RSC-mode
   action handling; this app uses plain client-side `BrowserRouter` with no server

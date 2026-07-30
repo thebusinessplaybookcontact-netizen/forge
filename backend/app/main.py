@@ -7,12 +7,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import auth
 from .claude_client import ClaudeNotConfigured
 from .config import get_settings
 from .db import init_db
-from .routers import chat, goals, voice
+from .routers import auth_routes, chat, goals, voice
 
 log = logging.getLogger("coach")
+
+# Everything under /api needs a session except these. Health stays open so a platform
+# healthcheck doesn't need credentials, and it deliberately leaks nothing but liveness.
+OPEN_PATHS = frozenset({"/api/health", "/api/auth/status", "/api/auth/login", "/api/auth/logout"})
 
 settings = get_settings()
 
@@ -20,6 +25,12 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    if not auth.auth_required():
+        log.warning(
+            "COACH_PASSCODE is not set — the API is OPEN. Fine on localhost; if this is "
+            "reachable from the internet, anyone with the URL can read your goals and "
+            "spend your API credits."
+        )
     yield
 
 
@@ -34,6 +45,27 @@ if settings.cors_origin_list:
         allow_headers=["*"],
     )
 
+@app.middleware("http")
+async def require_session(request: Request, call_next):
+    """Gate the API behind the passcode.
+
+    A middleware rather than a per-route dependency so a new router can't accidentally
+    ship unprotected — the default is closed, and exceptions are listed in one place.
+    The SPA shell itself stays public; it's a static bundle with no data in it, and it
+    needs to load in order to show the lock screen.
+    """
+    path = request.url.path
+    if (
+        auth.auth_required()
+        and path.startswith("/api/")
+        and path not in OPEN_PATHS
+        and not auth.token_valid(request.cookies.get(auth.COOKIE_NAME))
+    ):
+        return JSONResponse(status_code=401, content={"detail": "Locked."})
+    return await call_next(request)
+
+
+app.include_router(auth_routes.router)
 app.include_router(chat.router)
 app.include_router(goals.router)
 app.include_router(voice.router)
@@ -66,6 +98,8 @@ def health() -> dict:
         "status": "ok",
         "model": settings.claude_model,
         "claude_configured": bool(settings.anthropic_api_key),
+        # Surfaced so an accidentally-open deploy is visible without reading logs.
+        "auth": "on" if auth.auth_required() else "off",
     }
 
 

@@ -14,6 +14,8 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false # set in the dashboard, never in the repo
+      - key: COACH_PASSCODE
+        sync: false # without this the deployed API is open to anyone with the URL
       - key: ELEVENLABS_API_KEY
         sync: false
       - key: COACH_DATA_DIR
