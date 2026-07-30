@@ -384,6 +384,12 @@ button {
   border-top: 1px solid var(--line);
 }
 
+/* Done recedes; it doesn't get struck through. A habit isn't finished — it's back
+   tomorrow — so the row stays legible and just stops competing for attention. */
+.habit--done .habit__text {
+  color: var(--ink-soft);
+}
+
 /* A rounded square rather than the tasks' circle: a habit isn't finished when you
    tick it, it comes back tomorrow, and the shape says so before the label does. */
 .habit__tick {

@@ -88,8 +88,10 @@ def test_prompt_states_the_local_date(tz):
         db.commit()
         state = build_system_blocks(db)[1]["text"]
 
-    expected = datetime.now(ZoneInfo("Pacific/Kiritimati")).date().isoformat()
-    assert f"Today is {expected}" in state, "the coach must resolve 'today' the way Kyle would"
+    expected = datetime.now(ZoneInfo("Pacific/Kiritimati")).date()
+    assert f"Today is {expected:%A}, {expected.isoformat()}" in state, (
+        "the coach must resolve 'today' — day and date — the way Kyle would"
+    )
     Base.metadata.drop_all(bind=engine)
 
 

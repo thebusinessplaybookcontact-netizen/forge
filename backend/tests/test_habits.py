@@ -151,6 +151,21 @@ def test_consistency_is_measured_from_when_the_habit_started():
     assert stats(h, WED).completion_rate_30d == 1.0
 
 
+def test_back_filled_days_count_toward_consistency():
+    """A day ticked in retrospect is history, so the window has to start at it.
+
+    Otherwise a habit you create today and immediately fill in for earlier in the week
+    reads 0% consistent while visibly showing logged days — the discouraging-and-wrong
+    number this whole module exists to avoid.
+    """
+    habit_id = make_habit(cadence=Cadence.weekly, target=2, created=THU)
+    log_days(habit_id, [MONDAY])
+
+    s = stats(habit_id, THU)
+    assert s.this_week == 1
+    assert s.completion_rate_30d > 0.8, "one of two, over the four days it has existed"
+
+
 def test_consistency_survives_a_broken_streak():
     """The number that stops a reset reading as total failure."""
     h = make_habit(created=MONDAY)
@@ -268,3 +283,28 @@ def test_habits_reach_the_prompt_with_streak_and_consistency():
     assert "3x per week" in state
     assert "consistent over 30 days" in state
     assert "Best shape of my life." in state
+
+
+def test_the_prompt_says_how_much_of_the_week_is_left():
+    """'2 of 3' is fine on Monday and a problem on Sunday. The coach needs to know which."""
+    from app.memory import _format_habits
+
+    with SessionLocal() as db:
+        habit = habits.create_habit(db, text="Train", cadence="weekly", target_per_week=3)
+        log_days(habit.id, [MONDAY, WED])
+        line = _format_habits([habits.stats_for(db, habit, today=THU)], THU)
+
+    assert "2 of 3 this week" in line
+    assert "1 to go with 4 days left" in line  # Thu, Fri, Sat, Sun
+
+
+def test_a_met_weekly_target_is_reported_as_finished_not_as_progress():
+    from app.memory import _format_habits
+
+    with SessionLocal() as db:
+        habit = habits.create_habit(db, text="Train", cadence="weekly", target_per_week=3)
+        log_days(habit.id, [MONDAY, TUE, WED])
+        line = _format_habits([habits.stats_for(db, habit, today=SUN)], SUN)
+
+    assert "target already met" in line
+    assert "to go" not in line

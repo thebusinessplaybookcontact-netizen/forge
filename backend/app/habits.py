@@ -142,8 +142,14 @@ def stats_for(db: Session, habit: Habit, *, today: date | None = None) -> HabitS
     this_week = sum(1 for d in done if start_of_week <= d <= today)
 
     # Rate is measured from when the habit started, so a habit created three days ago
-    # doesn't show 10% just because the window is 30 days long.
-    window_start = max(today - timedelta(days=29), clock.to_local(habit.created_at).date())
+    # doesn't show 10% just because the window is 30 days long. "Started" means the
+    # earlier of its creation and its oldest entry, because days can be back-filled:
+    # a habit created today and immediately ticked for last Monday has four days of
+    # history, and measuring from creation would score that as 0%.
+    began = clock.to_local(habit.created_at).date()
+    if done:
+        began = min(began, min(done))
+    window_start = max(today - timedelta(days=29), began)
     window_days = (today - window_start).days + 1
     expected = window_days * (target / 7)
     hit = sum(1 for d in done if window_start <= d <= today)

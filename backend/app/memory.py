@@ -58,15 +58,21 @@ def _format_tasks(tasks: list[Task], goals: list[Goal]) -> str:
     return "\n".join(lines)
 
 
-def _format_habits(stats: list) -> str:
+def _format_habits(stats: list, today) -> str:
     """Habits with enough context for the coach to be specific rather than nagging.
 
     Deliberately shows consistency alongside the streak: if only the streak were here,
     a reset would look like total failure to a coach with a licence to be blunt, which
     is exactly the response that makes people quit.
+
+    Weekly habits carry how many days are left in the week, because "2 of 3" means
+    something completely different on Monday than it does on Sunday night, and without
+    it the coach either nags early or notices too late to help.
     """
     if not stats:
         return "(None yet. If Kyle describes something he wants to do regularly, offer to track it.)"
+
+    days_left = 7 - today.weekday()  # including today
 
     lines = []
     for s in stats:
@@ -77,6 +83,12 @@ def _format_habits(stats: list) -> str:
         else:
             cadence = f"{s.target_per_week}x per week"
             progress = f"{s.this_week} of {s.target_per_week} this week"
+            progress += ", done today" if s.done_today else ", not yet today"
+            short = s.target_per_week - s.this_week
+            if short <= 0:
+                progress += ", target already met"
+            else:
+                progress += f", {short} to go with {days_left} day{'s' if days_left != 1 else ''} left"
 
         bits = [f"streak {s.current_streak} {s.streak_unit}{'s' if s.current_streak != 1 else ''}"]
         bits.append(f"{round(s.completion_rate_30d * 100)}% consistent over 30 days")
@@ -124,14 +136,18 @@ def build_system_blocks(db: Session) -> list[dict]:
     goals = crud.list_goals(db, active_only=True)
     tasks = crud.list_tasks(db, open_only=True)
     summaries = crud.list_recent_summaries(db)
-    habit_stats = habits.all_stats(db)
+    today = clock.today_local()
+    habit_stats = habits.all_stats(db, today=today)
 
     state = build_state_block(
         goals_block=_format_goals(goals),
         tasks_block=_format_tasks(tasks, goals),
-        habits_block=_format_habits(habit_stats),
+        habits_block=_format_habits(habit_stats, today),
         summaries_block=_format_summaries(summaries),
-        today=clock.today_local().isoformat(),
+        # Weekday as well as the date: a weekly habit at 2 of 3 is fine on Monday and a
+        # problem on Sunday, and the model shouldn't have to work out which day it is.
+        # The ISO form stays visible so tool arguments can be copied from it.
+        today=f"{today:%A}, {today.isoformat()}",
     )
 
     return [
