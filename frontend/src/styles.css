@@ -613,6 +613,59 @@ button.grid__cell--done:hover {
   color: var(--ink-soft);
 }
 
+/* The work sits *inside* the goal, held there by a rule down the left. Without it a
+   task is just another line and the one relationship this app is built on — this is
+   what I'm doing about that — is invisible. */
+.goal__steps {
+  margin: var(--s2) 0 0;
+  padding-left: var(--s3);
+  border-left: 1px solid var(--line);
+}
+
+.goal__steps .tasks__item {
+  min-height: 36px;
+  padding: var(--s1) 0;
+}
+
+.goal__prompt {
+  align-self: flex-start;
+  margin-top: var(--s1);
+  padding: var(--s1) 0;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.goal__prompt:hover,
+.goal__prompt--empty {
+  color: var(--accent);
+}
+
+.goal__add {
+  display: flex;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
+.goal__add .button {
+  flex: none;
+}
+
+.panel__toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
 .undo-bar {
   display: flex;
   align-items: center;

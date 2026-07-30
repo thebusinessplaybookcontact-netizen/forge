@@ -11,6 +11,7 @@ import {
   updateGoal,
   updateTask,
 } from "../api";
+import { useChatContext } from "../ChatContext";
 import GoalRow from "../components/GoalRow";
 import TaskRow from "../components/TaskRow";
 import type { Goal, Horizon, Task } from "../types";
@@ -28,12 +29,14 @@ export default function Goals() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [undoable, setUndoable] = useState<Undoable | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showDone, setShowDone] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const { changed } = useChatContext();
 
   const [goalText, setGoalText] = useState("");
   const [goalWhy, setGoalWhy] = useState("");
   const [horizon, setHorizon] = useState<Horizon>("weekly");
   const [taskText, setTaskText] = useState("");
-  const [taskGoal, setTaskGoal] = useState<number | "">("");
 
   const refresh = useCallback(async () => {
     const [g, t] = await Promise.all([getGoals(), getTasks()]);
@@ -41,9 +44,10 @@ export default function Goals() {
     setTasks(t);
   }, []);
 
+  // Also resyncs when the coach changes something mid-conversation.
   useEffect(() => {
     refresh().catch((e) => setError(String(e)));
-  }, [refresh]);
+  }, [refresh, changed]);
 
   /** Run a mutation, then resync. Keeps every handler down to one line. */
   const run = useCallback(
@@ -65,14 +69,13 @@ export default function Goals() {
     await run(() => createGoal({ text: goalText.trim(), horizon, why: goalWhy.trim() || null }));
     setGoalText("");
     setGoalWhy("");
+    setComposing(false);
   }
 
-  async function addTask(e: React.FormEvent) {
+  async function addLooseTask(e: React.FormEvent) {
     e.preventDefault();
     if (!taskText.trim()) return;
-    await run(() =>
-      createTask({ text: taskText.trim(), linked_goal_id: taskGoal === "" ? null : taskGoal }),
-    );
+    await run(() => createTask({ text: taskText.trim(), linked_goal_id: null }));
     setTaskText("");
   }
 
@@ -89,9 +92,46 @@ export default function Goals() {
     });
 
   const active = goals.filter((g) => g.status !== "done");
-  const done = goals.filter((g) => g.status === "done");
+  const achieved = goals.filter((g) => g.status === "done");
   const openTasks = tasks.filter((t) => t.status === "open");
   const doneTasks = tasks.filter((t) => t.status === "done");
+  const loose = openTasks.filter((t) => t.linked_goal_id == null);
+
+  /** The open tasks serving one goal — the link the model already reasons about, made
+      visible. A goal with none is a goal nothing is happening on. */
+  const stepsFor = (goal: Goal) => openTasks.filter((t) => t.linked_goal_id === goal.id);
+
+  const taskRow = (task: Task) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      goals={goals}
+      onToggle={() => run(() => updateTask(task.id, { status: task.status === "done" ? "open" : "done" }))}
+      onSave={(patch) => run(() => updateTask(task.id, patch))}
+      onDelete={() => removeTask(task)}
+    />
+  );
+
+  const goalRow = (goal: Goal) => {
+    const steps = stepsFor(goal);
+    return (
+      <GoalRow
+        key={goal.id}
+        goal={goal}
+        hasSteps={steps.length > 0}
+        onSave={(patch) => run(() => updateGoal(goal.id, patch))}
+        onDelete={() => removeGoal(goal)}
+        // A paused goal is paused on purpose; it shouldn't be asking for next steps.
+        onAddStep={
+          goal.status === "active"
+            ? (text) => run(() => createTask({ text, linked_goal_id: goal.id }))
+            : undefined
+        }
+      >
+        {steps.length > 0 ? steps.map(taskRow) : null}
+      </GoalRow>
+    );
+  };
 
   return (
     <div className="goals">
@@ -128,22 +168,81 @@ export default function Goals() {
         return (
           <section key={h} className="panel">
             <h2 className="panel__title">{h}</h2>
-            {inHorizon.map((goal) => (
-              <GoalRow
-                key={goal.id}
-                goal={goal}
-                onSave={(patch) => run(() => updateGoal(goal.id, patch))}
-                onDelete={() => removeGoal(goal)}
-              />
-            ))}
+            {inHorizon.map(goalRow)}
           </section>
         );
       })}
 
-      {done.length > 0 && (
+      <section className="panel">
+        {composing ? (
+          <form className="form" onSubmit={addGoal}>
+            <h2 className="panel__title">Add a goal</h2>
+            <input
+              className="input"
+              value={goalText}
+              autoFocus
+              placeholder="What's the goal?"
+              aria-label="Goal"
+              onChange={(e) => setGoalText(e.target.value)}
+            />
+            <input
+              className="input"
+              value={goalWhy}
+              placeholder="Why does it matter?"
+              aria-label="Why it matters"
+              onChange={(e) => setGoalWhy(e.target.value)}
+            />
+            <select
+              className="input"
+              value={horizon}
+              aria-label="Horizon"
+              onChange={(e) => setHorizon(e.target.value as Horizon)}
+            >
+              {HORIZONS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+            <div className="form__actions">
+              <button className="button" type="submit" disabled={!goalText.trim()}>
+                Add goal
+              </button>
+              <button
+                className="button button--quiet"
+                type="button"
+                onClick={() => setComposing(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button className="button button--quiet" type="button" onClick={() => setComposing(true)}>
+            + New goal
+          </button>
+        )}
+      </section>
+
+      <section className="panel">
+        <h2 className="panel__title">Not tied to a goal</h2>
+        {loose.length === 0 && <p className="muted">Everything open is attached to something.</p>}
+        <ul className="tasks">{loose.map(taskRow)}</ul>
+        <form className="form" onSubmit={addLooseTask}>
+          <input
+            className="input"
+            value={taskText}
+            placeholder="Add a task"
+            aria-label="New task"
+            onChange={(e) => setTaskText(e.target.value)}
+          />
+        </form>
+      </section>
+
+      {achieved.length > 0 && (
         <section className="panel">
           <h2 className="panel__title">Achieved</h2>
-          {done.map((goal) => (
+          {achieved.map((goal) => (
             <GoalRow
               key={goal.id}
               goal={goal}
@@ -154,99 +253,15 @@ export default function Goals() {
         </section>
       )}
 
-      <section className="panel">
-        <h2 className="panel__title">Add a goal</h2>
-        <form className="form" onSubmit={addGoal}>
-          <input
-            className="input"
-            value={goalText}
-            placeholder="What's the goal?"
-            aria-label="Goal"
-            onChange={(e) => setGoalText(e.target.value)}
-          />
-          <input
-            className="input"
-            value={goalWhy}
-            placeholder="Why does it matter?"
-            aria-label="Why it matters"
-            onChange={(e) => setGoalWhy(e.target.value)}
-          />
-          <select
-            className="input"
-            value={horizon}
-            aria-label="Horizon"
-            onChange={(e) => setHorizon(e.target.value as Horizon)}
-          >
-            {HORIZONS.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
-          <button className="button" type="submit">
-            Add goal
-          </button>
-        </form>
-      </section>
-
-      <section className="panel">
-        <h2 className="panel__title">To-do</h2>
-        <ul className="tasks">
-          {openTasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              goals={goals}
-              onToggle={() => run(() => updateTask(task.id, { status: "done" }))}
-              onSave={(patch) => run(() => updateTask(task.id, patch))}
-              onDelete={() => removeTask(task)}
-            />
-          ))}
-        </ul>
-        {openTasks.length === 0 && <p className="muted">Nothing open.</p>}
-
-        <form className="form" onSubmit={addTask}>
-          <input
-            className="input"
-            value={taskText}
-            placeholder="Add a task"
-            aria-label="New task"
-            onChange={(e) => setTaskText(e.target.value)}
-          />
-          <select
-            className="input"
-            value={taskGoal}
-            aria-label="Link to goal"
-            onChange={(e) => setTaskGoal(e.target.value === "" ? "" : Number(e.target.value))}
-          >
-            <option value="">No goal</option>
-            {goals.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.text}
-              </option>
-            ))}
-          </select>
-          <button className="button" type="submit">
-            Add task
-          </button>
-        </form>
-      </section>
-
       {doneTasks.length > 0 && (
         <section className="panel">
-          <h2 className="panel__title">Done</h2>
-          <ul className="tasks">
-            {doneTasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                goals={goals}
-                onToggle={() => run(() => updateTask(task.id, { status: "open" }))}
-                onSave={(patch) => run(() => updateTask(task.id, patch))}
-                onDelete={() => removeTask(task)}
-              />
-            ))}
-          </ul>
+          {/* Finished work is worth being able to see and worth staying out of the way.
+              Collapsed by default; the count is the part you actually want. */}
+          <button className="panel__toggle" type="button" onClick={() => setShowDone(!showDone)}>
+            <span className="panel__title">Done</span>
+            <span className="panel__count">{showDone ? "hide" : doneTasks.length}</span>
+          </button>
+          {showDone && <ul className="tasks">{doneTasks.map(taskRow)}</ul>}
         </section>
       )}
     </div>

@@ -286,7 +286,16 @@ tokens and never hardcode a colour, so a palette change is one block, not a swee
   remembered recap. The voice looks different from the chrome because it is different.
   Don't use the serif for headings; that dissolves the distinction.
 - **State is encoded as form, not just text.** A due date renders as a chip —
-  overdue / today / a date — so what needs attention reads without comparing dates.
+  overdue / today / tomorrow / `Sun` / `Aug 12` — so what needs attention reads without
+  comparing dates. The nearby days are *named* because "Fri" is read at a glance where
+  "07-31" has to be decoded, and the width saved is the difference between a nested task
+  fitting on one line and wrapping.
+- **Structure is shown by containment.** On the Goals screen a task sits indented inside
+  the goal it serves, held by a rule down the left. The link exists in the data and the
+  model already reasons about it ("serves: …"); a flat list throws it away. A goal with
+  nothing under it says *+ Plan a first step* in the accent — one element carrying both
+  the diagnostic and the fix, rather than a warning chip plus a button saying the same
+  thing twice.
 - **Both themes are first-class.** `data-theme` is stamped on `<html>` by an inline
   script in `index.html` *before first paint*, which is why there's no flash of the wrong
   theme; Settings offers System / Light / Dark. Every token pair passes WCAG AA
