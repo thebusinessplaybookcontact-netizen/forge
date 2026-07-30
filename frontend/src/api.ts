@@ -55,19 +55,26 @@ export async function login(passcode: string): Promise<string | null> {
 
 export const getDashboard = () => request<Dashboard>("/dashboard");
 
+/** Soft deletes return the handle needed to offer an undo. */
+export interface DeleteResult {
+  undo_id: number;
+}
+
 export const getGoals = () => request<Goal[]>("/goals");
 export const createGoal = (body: Partial<Goal>) =>
   request<Goal>("/goals", { method: "POST", body: JSON.stringify(body) });
 export const updateGoal = (id: number, body: Partial<Goal>) =>
   request<Goal>(`/goals/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-export const deleteGoal = (id: number) => request<void>(`/goals/${id}`, { method: "DELETE" });
+export const deleteGoal = (id: number) =>
+  request<DeleteResult>(`/goals/${id}`, { method: "DELETE" });
 
 export const getTasks = () => request<Task[]>("/tasks");
 export const createTask = (body: Partial<Task>) =>
   request<Task>("/tasks", { method: "POST", body: JSON.stringify(body) });
 export const updateTask = (id: number, body: Partial<Task>) =>
   request<Task>(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-export const deleteTask = (id: number) => request<void>(`/tasks/${id}`, { method: "DELETE" });
+export const deleteTask = (id: number) =>
+  request<DeleteResult>(`/tasks/${id}`, { method: "DELETE" });
 
 export const closeSession = (id: number) =>
   request<{ session_id: number; recap: string; commitments: string[] }>(`/sessions/${id}/close`, {

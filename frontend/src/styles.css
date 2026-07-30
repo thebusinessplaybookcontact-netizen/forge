@@ -375,6 +375,68 @@ button {
   color: var(--ink-soft);
 }
 
+/* A view-mode row: content, optional state, and a quiet edit affordance. */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+
+.row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.row__edit {
+  flex: none;
+  min-height: 32px;
+  padding: 0 var(--s2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.row__edit:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.goal__text--muted {
+  color: var(--ink-soft);
+}
+
+.undo-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s5);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--sunken);
+  font-size: var(--t-sm);
+}
+
+.undo-bar > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.undo-bar__dismiss {
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+  cursor: pointer;
+}
+
 /* -------------------------------------------------------------- forms */
 
 .form {
@@ -417,6 +479,70 @@ button {
 
 .button:hover {
   background: var(--accent-hover);
+}
+
+/* Secondary and destructive actions sit beside Save, so they must not compete with it
+   for attention — outline rather than fill, and red only on the one that destroys. */
+.button--quiet,
+.button--danger {
+  background: none;
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.button--quiet:hover {
+  background: var(--sunken);
+  border-color: var(--line-strong);
+}
+
+.button--danger {
+  color: var(--danger);
+}
+
+.button--danger:hover {
+  background: var(--danger-wash);
+  border-color: var(--danger);
+}
+
+.form__pair {
+  display: flex;
+  gap: var(--s2);
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.field__label {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.form__actions {
+  display: flex;
+  gap: var(--s2);
+}
+
+.form__actions .button {
+  align-self: auto;
+}
+
+/* An editing row breaks out of the single-line layout. */
+.tasks__item--editing {
+  display: block;
+  padding: var(--s3) 0;
+}
+
+.tasks__item--editing .form {
+  margin-top: 0;
 }
 
 .choice {

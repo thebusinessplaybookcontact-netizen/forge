@@ -24,6 +24,7 @@ backend/            FastAPI. Holds the Claude key. Does the memory glue.
   tests/            Tool loop and chat tested with the API stubbed, DB writes real.
 frontend/           React + Vite, installable as a PWA.
   src/pages/        Home (dashboard + chat box), Chat, Goals, Settings
+  src/components/   GoalRow / TaskRow (view + inline edit), Composer, ActionNote
 Dockerfile          Builds the PWA and serves it from the API as one service.
 ```
 
@@ -112,10 +113,12 @@ Token use per turn therefore stays flat no matter how long the app has been in u
 and the current-state block. Never interpolate a timestamp or anything volatile into
 `COACH_PERSONA` — that would invalidate the cache on every single request.
 
-One caveat to watch: the API silently declines to cache prefixes under ~1024 tokens, and
-the persona is currently around 800. Until the state block grows (more goals, tasks, and
-recaps), caching may not engage at all. Check `usage.cache_read_input_tokens` on a chat
-response — if it's always 0, that's why, not a misconfiguration.
+The API silently declines to cache prefixes under ~1024 tokens. That was a live concern
+when the persona was the whole prefix; it isn't now — tool definitions render *before*
+the system prompt, so the first breakpoint covers tools + persona at roughly 2,000
+tokens. Still worth spot-checking `usage.cache_read_input_tokens` on a chat response: if
+it's persistently 0 across messages, something is invalidating the prefix (see the
+"never interpolate anything volatile" rule above).
 
 ## Tools — the coach changes things itself
 
