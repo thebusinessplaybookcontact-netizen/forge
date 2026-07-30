@@ -367,3 +367,35 @@ body {
   opacity: 0.4;
   cursor: default;
 }
+
+.composer__mic {
+  flex: none;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.composer__mic--live {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0d06;
+  animation: mic-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer__mic--live {
+    animation: none;
+  }
+}

@@ -22,7 +22,11 @@ export function useChat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [changed, setChanged] = useState(0);
+  // The most recently finished reply. Carries a sequence number so a repeated identical
+  // reply still counts as new — otherwise it would silently not be spoken.
+  const [lastReply, setLastReply] = useState<{ seq: number; text: string } | null>(null);
   const sessionId = useRef<number | null>(null);
+  const replySeq = useRef(0);
 
   const send = useCallback(
     async (message: string) => {
@@ -75,6 +79,8 @@ export function useChat() {
 
       if (reply.trim()) {
         setEntries((prev) => [...prev, { kind: "turn", role: "assistant", content: reply.trim() }]);
+        replySeq.current += 1;
+        setLastReply({ seq: replySeq.current, text: reply.trim() });
       }
       setStreaming("");
       setBusy(false);
@@ -97,5 +103,5 @@ export function useChat() {
     }
   }, []);
 
-  return { entries, streaming, busy, error, send, undo, sessionId, changed };
+  return { entries, streaming, busy, error, send, undo, sessionId, changed, lastReply };
 }

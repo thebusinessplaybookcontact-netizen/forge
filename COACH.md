@@ -16,9 +16,10 @@ backend/            FastAPI. Holds the Claude key. Does the memory glue.
     agent.py        The tool_use -> execute -> tool_result loop.
     crud.py         Every DB mutation. Shared by the HTTP routes and the tools.
     memory.py       Assembles what the model sees (see Memory design).
+    speech.py       Text to speech (ElevenLabs / OpenAI) behind one function.
     claude_client.py Every Claude call goes through here.
     models.py       goals / tasks / sessions / summaries
-    routers/        chat.py (chat + session close), goals.py (goals, tasks, dashboard)
+    routers/        chat.py, goals.py (goals, tasks, dashboard), voice.py (TTS)
   tests/            Tool loop and chat tested with the API stubbed, DB writes real.
 frontend/           React + Vite, installable as a PWA.
   src/pages/        Home (dashboard + chat box), Chat, Goals, Settings
@@ -128,6 +129,37 @@ be answered within the turn it happened in. Subsequent turns see the *result* of
 change, because the current goals and tasks are re-rendered into the system prompt each
 time.
 
+## Voice
+
+Tap the microphone next to the message box, talk, tap again. It sends when you stop.
+
+**Speech in** is the phone's own engine (`webkitSpeechRecognition`) — free, nothing to
+configure, and audio never reaches the server. It's set to `continuous` so pausing
+mid-thought doesn't cut you off, which is the point when you're rambling. Browsers
+without it (Firefox) just don't show the mic button; typing still works.
+
+**Speech out** has two modes, toggled in Settings:
+
+| Mode | How | Cost |
+| --- | --- | --- |
+| Human voice | `POST /api/speak` → ElevenLabs or OpenAI → mp3 | per word |
+| Built-in voice | `speechSynthesis` in the browser | free |
+
+The TTS key lives server-side like the Claude key; the browser asks the API for audio and
+never sees a credential. Provider selection is config, not code: `COACH_TTS_PROVIDER=auto`
+prefers ElevenLabs, falls back to OpenAI, and if neither key is set **human mode silently
+degrades to the built-in voice** rather than erroring — so the app works with no TTS
+account at all. Settings says which provider is live, and "Hear it" plays a sample.
+
+Reading replies aloud is **off by default** — a fresh install shouldn't start talking at
+you. Turn it on in Settings.
+
+Two mobile details worth knowing, since both are invisible until they break. Audio
+playback must be unlocked by a user gesture, so tapping the mic plays a moment of silence
+to prime the audio element for the reply that arrives seconds later. And any failure in
+the paid path falls through to the browser voice, so a provider outage means a worse
+voice rather than silence.
+
 ## Nothing is ever really deleted
 
 Voice will mishear things, and a deleted task shouldn't be a lost task. So there are no
@@ -175,6 +207,8 @@ Goals screen the way you'd actually say them. The seeded ones are placeholders.
 | | `/api/goals`, `/api/tasks` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`). `DELETE` is soft and returns `undo_id` |
 | `POST` | `/api/undo` | Reverse the most recent deletion |
 | `POST` | `/api/undo/{undo_id}` | Reverse one specific change (410 if the window has passed) |
+| `GET` | `/api/voice/status` | Whether a human-voice provider is configured |
+| `POST` | `/api/speak` | Text → mp3 (503 = no provider, client falls back to browser voice) |
 
 ## Deploying
 
@@ -194,8 +228,7 @@ before there's data worth keeping.
 4. ~~Session summaries + memory loading~~ ✅
 4b. ~~Tool use — the coach edits goals and tasks from conversation~~ ✅
 4c. ~~Soft delete + undo, and a live-updating dashboard~~ ✅
-5. Voice — STT in, human TTS out, with the toggle. The Settings toggle saves its
-   preference already; nothing is wired to speech yet.
+5. ~~Voice — STT in, human TTS out, with the toggle~~ ✅
 6. Deploy hosted — Dockerfile and railway.json are ready.
 7. Polish pass with the frontend-design skill.
 
@@ -213,5 +246,11 @@ literal quest/game layer.
   "permanently forget this" path will eventually be wanted.
 - **Undo covers deletions, not edits.** If the coach rewords a task wrongly, there's no
   one-tap way back.
+- **Speech recognition is Chrome/Safari only**, and on iOS it needs Safari 14.5+. Firefox
+  shows no mic button. Nothing has been tested on a real phone yet — the browser checks
+  ran in headless Chromium, which can't exercise a microphone.
+- **TTS isn't streamed.** The whole reply is synthesised before playback starts, so a
+  long answer has a noticeable pause. Both providers support streaming if that becomes
+  annoying.
 - **Nothing is designed yet.** The CSS is a restrained baseline so the skeleton is usable
   on a phone, and should be treated as a placeholder for step 7.

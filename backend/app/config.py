@@ -37,6 +37,36 @@ class Settings(BaseSettings):
     # --- Storage ---
     database_url: str = f"sqlite:///{BACKEND_DIR / 'coach.db'}"
 
+    # --- Voice (text to speech) ---
+    # Speech-to-text is the phone's own engine and costs nothing, so it needs no config.
+    # This is the "human voice" half; the browser's built-in voice is the free fallback.
+    #
+    # "auto" picks whichever provider has a key, preferring ElevenLabs. Set explicitly to
+    # pin one, or "none" to disable human TTS entirely.
+    tts_provider: str = "auto"  # auto | elevenlabs | openai | none
+    tts_max_chars: int = 4000  # OpenAI's input cap is 4096
+
+    openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("COACH_OPENAI_API_KEY", "OPENAI_API_KEY"),
+    )
+    openai_tts_model: str = "gpt-4o-mini-tts"
+    openai_tts_voice: str = "alloy"
+    # gpt-4o-mini-tts takes a style instruction; this is where the coach's delivery lives.
+    openai_tts_instructions: str = (
+        "Speak like a friend who knows you well: direct, warm, unhurried. "
+        "Not a newsreader, not a customer service agent."
+    )
+
+    elevenlabs_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("COACH_ELEVENLABS_API_KEY", "ELEVENLABS_API_KEY"),
+    )
+    # Default is ElevenLabs' public "George" sample voice; swap for your own.
+    elevenlabs_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
+    # flash is the low-latency model, which matters when you're waiting to hear a reply.
+    elevenlabs_model: str = "eleven_flash_v2_5"
+
     # --- Undo ---
     # How long after a delete you can still take it back. Soft-deleted rows are never
     # purged, so this bounds the *undo affordance*, not recoverability by hand.

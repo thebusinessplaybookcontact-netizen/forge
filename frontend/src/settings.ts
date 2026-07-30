@@ -3,9 +3,11 @@ import type { AppSettings, VoiceMode } from "./types";
 const KEY = "coach.settings";
 
 const DEFAULTS: AppSettings = {
-  // "human" will route through the backend TTS endpoint once voice lands (build step 5).
-  // "browser" uses the free built-in speechSynthesis voice for comparison.
+  // "human" routes through the backend TTS provider; "browser" uses the phone's free
+  // built-in voice. Falls back to browser automatically if no provider is configured.
   voiceMode: "human",
+  // Off by default: the first thing a new install does shouldn't be talk at you.
+  speakReplies: false,
 };
 
 export function loadSettings(): AppSettings {
@@ -23,6 +25,12 @@ export function saveSettings(settings: AppSettings): void {
 
 export function setVoiceMode(mode: VoiceMode): AppSettings {
   const next = { ...loadSettings(), voiceMode: mode };
+  saveSettings(next);
+  return next;
+}
+
+export function setSpeakReplies(on: boolean): AppSettings {
+  const next = { ...loadSettings(), speakReplies: on };
   saveSettings(next);
   return next;
 }

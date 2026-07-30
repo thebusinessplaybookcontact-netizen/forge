@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .claude_client import ClaudeNotConfigured
 from .config import get_settings
 from .db import init_db
-from .routers import chat, goals
+from .routers import chat, goals, voice
 
 log = logging.getLogger("coach")
 
@@ -36,6 +36,7 @@ if settings.cors_origin_list:
 
 app.include_router(chat.router)
 app.include_router(goals.router)
+app.include_router(voice.router)
 
 
 @app.exception_handler(ClaudeNotConfigured)

@@ -89,6 +89,10 @@ class ChatUsage(BaseModel):
     cache_read_input_tokens: int = 0
 
 
+class SpeakRequest(BaseModel):
+    text: str = Field(min_length=1)
+
+
 class ToolAction(BaseModel):
     """One change the coach made to goals or tasks during this turn."""
 

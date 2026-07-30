@@ -43,4 +43,6 @@ export type VoiceMode = "human" | "browser";
 
 export interface AppSettings {
   voiceMode: VoiceMode;
+  /** Whether the coach reads its replies aloud automatically. */
+  speakReplies: boolean;
 }
