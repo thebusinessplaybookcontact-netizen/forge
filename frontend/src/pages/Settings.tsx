@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getAuthStatus, logout } from "../api";
+import { getAuthStatus, getUsage, logout, type UsageSummary, type UsageWindow } from "../api";
 import { loadSettings, setSpeakReplies, setTheme, setVoiceMode } from "../settings";
 import { applyTheme } from "../theme";
 import type { ThemePref, VoiceMode } from "../types";
@@ -25,10 +25,31 @@ interface VoiceStatus {
   provider: string | null;
 }
 
+function money(dollars: number | null): string {
+  if (dollars === null) return "—";
+  // Sub-cent totals are normal early on, and rounding them to $0.00 reads as "free".
+  return dollars < 0.01 && dollars > 0 ? "<$0.01" : `$${dollars.toFixed(2)}`;
+}
+
+function UsageRow({ label, window }: { label: string; window: UsageWindow }) {
+  const tokens = window.input_tokens + window.output_tokens + window.cache_read_tokens;
+  return (
+    <div className="usage__row">
+      <span className="usage__label">{label}</span>
+      <span className="usage__value">{money(window.estimated_cost_usd)}</span>
+      <span className="usage__detail">
+        {window.calls} {window.calls === 1 ? "call" : "calls"} · {(tokens / 1000).toFixed(1)}k
+        tokens
+      </span>
+    </div>
+  );
+}
+
 export default function Settings() {
   const [settings, setSettings] = useState(loadSettings);
   const [status, setStatus] = useState<VoiceStatus | null>(null);
   const [locking, setLocking] = useState(false);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
 
   useEffect(() => {
     fetch("/api/voice/status")
@@ -38,6 +59,7 @@ export default function Settings() {
     getAuthStatus()
       .then((s) => setLocking(s.required))
       .catch(() => setLocking(false));
+    getUsage().then(setUsage).catch(() => setUsage(null));
   }, []);
 
   return (
@@ -96,6 +118,23 @@ export default function Settings() {
         )}
         {status?.human_voice && <p className="muted">Human voice via {status.provider}.</p>}
       </section>
+
+      {usage && (
+        <section className="panel">
+          <h2 className="panel__title">What it costs</h2>
+          <div className="usage">
+            <UsageRow label="Today" window={usage.today} />
+            <UsageRow label="7 days" window={usage.week} />
+            <UsageRow label="30 days" window={usage.month} />
+          </div>
+          <p className="muted">
+            Estimated from list prices, not a bill.
+            {usage.month.calls > 0 && (
+              <> {Math.round(usage.month.cached_share * 100)}% of input came from cache.</>
+            )}
+          </p>
+        </section>
+      )}
 
       <section className="panel">
         <h2 className="panel__title">Appearance</h2>

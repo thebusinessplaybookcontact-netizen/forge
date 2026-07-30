@@ -28,7 +28,8 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
-from . import claude_client, tools
+from . import claude_client, tools, usage as usage_log
+from .config import get_settings
 from .tools import ToolOutcome
 
 # A turn that still wants tools after this many round trips is stuck. Each iteration is
@@ -82,6 +83,7 @@ def run_turn(db: Session, system_blocks: list[dict], messages: list[dict]) -> Tu
     for _ in range(MAX_TOOL_ITERATIONS):
         message = claude_client.complete(system_blocks, working, tools.TOOL_DEFINITIONS)
         last_usage = message.usage
+        usage_log.record(db, kind="chat", model=get_settings().claude_model, usage=message.usage)
 
         if message.stop_reason == "refusal":
             raise ModelRefused("The model declined to respond to that.")
@@ -137,6 +139,7 @@ def stream_turn(
                 reply_parts.append(delta)
                 yield Delta(delta)
             message = stream.get_final_message()
+        usage_log.record(db, kind="chat", model=get_settings().claude_model, usage=message.usage)
 
         if message.stop_reason == "refusal":
             raise ModelRefused("The model declined to respond to that.")

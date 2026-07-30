@@ -1,13 +1,31 @@
 from __future__ import annotations
 
 import hashlib
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.orm import Session
 
-from .. import speech
+from .. import speech, usage
+from ..db import get_db
 from ..schemas import SpeakRequest
 
-router = APIRouter(prefix="/api", tags=["voice"])
+router = APIRouter(prefix="/api", tags=["voice & usage"])
+
+SessionDep = Annotated[Session, Depends(get_db)]
+
+
+@router.get("/usage")
+def usage_summary(db: SessionDep) -> dict:
+    """What the coach has cost lately.
+
+    Cost is an estimate from a hardcoded price list, not a bill — see app/usage.py.
+    """
+    return {
+        "today": usage.summarise(db, days=1),
+        "week": usage.summarise(db, days=7),
+        "month": usage.summarise(db, days=30),
+    }
 
 
 @router.get("/voice/status")

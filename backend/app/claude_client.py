@@ -53,6 +53,14 @@ def _request_kwargs(system_blocks: list[dict], messages: list[dict], tools: list
         "system": system_blocks,
         "messages": messages,
         "output_config": {"effort": settings.claude_effort},
+        # Caches the conversation as well as the system prefix.
+        #
+        # Without this, every turn re-sends the whole conversation at full price, so
+        # cost grows with the square of the turn count — a long rambling session, which
+        # is exactly what this app is for, gets expensive fast. Top-level placement puts
+        # the breakpoint on the last cacheable block automatically, which for a growing
+        # conversation is the right spot and needs no bookkeeping here.
+        "cache_control": {"type": "ephemeral"},
     }
     if tools:
         kwargs["tools"] = tools

@@ -84,6 +84,26 @@ class UndoEntry(Base):
     undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
+class UsageEvent(Base):
+    """Token usage for one model call, so spend is observable rather than a surprise.
+
+    Recorded per call rather than per turn: a turn that uses tools makes several, and
+    the difference between "one expensive turn" and "a tool loop that ran six times" is
+    exactly what you'd want to see.
+    """
+
+    __tablename__ = "usage_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), default="chat")  # chat | summary
+    model: Mapped[str] = mapped_column(String(64), default="")
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class CheckInSession(Base):
     """One conversation. The transcript is stored for the record but is never
     replayed into the model's context — only the summary is."""

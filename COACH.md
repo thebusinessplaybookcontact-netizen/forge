@@ -109,9 +109,23 @@ code path.
 
 Token use per turn therefore stays flat no matter how long the app has been in use.
 
-**Prompt caching** is set up with two breakpoints: the persona (byte-identical forever)
-and the current-state block. Never interpolate a timestamp or anything volatile into
-`COACH_PERSONA` — that would invalidate the cache on every single request.
+**Prompt caching** covers both halves of the request. Two explicit breakpoints on the
+system prompt — the persona (byte-identical forever) and the current-state block — plus
+top-level `cache_control`, which places a breakpoint on the conversation itself.
+
+That last one matters more than it looks. Without it, every turn re-sends the whole
+conversation at full price, so cost grows with the *square* of the turn count — and a
+long rambling session is precisely what this app is for:
+
+| Turns | Message tokens billed | With conversation caching |
+| --- | --- | --- |
+| 5 | 6,000 | 2,400 |
+| 20 | 84,000 | 15,600 |
+| 40 | 328,000 | 47,200 |
+
+Never interpolate a timestamp or anything volatile into `COACH_PERSONA` — that would
+invalidate the cache on every single request. Settings shows what share of input is
+actually coming from cache, which is the number that tells you whether this is working.
 
 The API silently declines to cache prefixes under ~1024 tokens. That was a live concern
 when the persona was the whole prefix; it isn't now — tool definitions render *before*
@@ -165,6 +179,20 @@ Note that tool blocks are not replayed in later turns' history: a `tool_use` onl
 be answered within the turn it happened in. Subsequent turns see the *result* of the
 change, because the current goals and tasks are re-rendered into the system prompt each
 time.
+
+## What it costs
+
+Every model call writes a `usage_events` row, and Settings shows today / 7 days /
+30 days with an estimated cost and how much of the input came from cache. `GET
+/api/usage` returns the same thing.
+
+Usage is recorded per *call*, not per turn — a turn that uses tools makes several, and
+the difference between one expensive answer and a tool loop that ran six times is
+exactly what you'd want to see.
+
+The cost figure is an estimate from a hardcoded price list in `app/usage.py`, not a
+bill. If a model isn't in that list its tokens are still counted but the total is
+withheld rather than silently understated. Update the prices when they change.
 
 ## Access
 
@@ -300,6 +328,7 @@ Goals screen the way you'd actually say them. The seeded ones are placeholders.
 | | `/api/goals`, `/api/tasks` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`). `DELETE` is soft and returns `undo_id` |
 | `POST` | `/api/undo` | Reverse the most recent deletion |
 | `POST` | `/api/undo/{undo_id}` | Reverse one specific change (410 if the window has passed) |
+| `GET` | `/api/usage` | Token usage and estimated cost for today / 7 / 30 days |
 | `GET` | `/api/voice/status` | Whether a human-voice provider is configured |
 | `POST` | `/api/speak` | Text → mp3 (503 = no provider, client falls back to browser voice) |
 
@@ -367,8 +396,8 @@ literal quest/game layer.
 - **No migrations.** Tables come from `create_all` on startup, and columns added to an
   existing model are patched in by `_ADDED_COLUMNS` in `db.py` (SQLite `ALTER TABLE`).
   That's a stopgap, not a migration system — add Alembic before the schema matters.
-- **No per-request cost limiting.** The passcode keeps strangers out, but nothing caps
-  spend if it leaks — or if you just talk a lot. Your API quota is the only ceiling.
+- **Spend is visible but not capped.** Settings reports what it costs; nothing stops it.
+  If the passcode leaks, or you simply talk a lot, your API quota is the only ceiling.
 - **react-router advisory GHSA-qwww-vcr4-c8h2** (high) is open with no fix published —
   it's flagged as fixed in >8.2.0 and the latest release is 7.18.2. It concerns RSC-mode
   action handling; this app uses plain client-side `BrowserRouter` with no server

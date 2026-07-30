@@ -38,6 +38,24 @@ export interface AuthStatus {
   authenticated: boolean;
 }
 
+export interface UsageWindow {
+  days: number;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cached_share: number;
+  estimated_cost_usd: number | null;
+}
+
+export interface UsageSummary {
+  today: UsageWindow;
+  week: UsageWindow;
+  month: UsageWindow;
+}
+
+export const getUsage = () => request<UsageSummary>("/usage");
+
 export const getAuthStatus = () => request<AuthStatus>("/auth/status");
 export const logout = () => request<unknown>("/auth/logout", { method: "POST" });
 

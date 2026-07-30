@@ -437,6 +437,39 @@ button {
   cursor: pointer;
 }
 
+/* Cost readout: figure first, supporting detail after — scanned, not read. */
+.usage {
+  display: flex;
+  flex-direction: column;
+}
+
+.usage__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 var(--s3);
+  padding: var(--s2) 0;
+}
+
+.usage__row + .usage__row {
+  border-top: 1px solid var(--line);
+}
+
+.usage__label {
+  font-weight: 500;
+}
+
+.usage__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.usage__detail {
+  grid-column: 1 / -1;
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+  font-variant-numeric: tabular-nums;
+}
+
 /* -------------------------------------------------------------- forms */
 
 .form {
