@@ -39,6 +39,7 @@ def get_db() -> Iterator[Session]:
 _ADDED_COLUMNS: dict[str, dict[str, str]] = {
     "goals": {"deleted_at": "DATETIME"},
     "tasks": {"deleted_at": "DATETIME"},
+    "sessions": {"last_active_at": "DATETIME"},
 }
 
 

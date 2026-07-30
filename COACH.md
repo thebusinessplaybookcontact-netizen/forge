@@ -16,6 +16,7 @@ backend/            FastAPI. Holds the Claude key. Does the memory glue.
     agent.py        The tool_use -> execute -> tool_result loop.
     crud.py         Every DB mutation. Shared by the HTTP routes and the tools.
     memory.py       Assembles what the model sees (see Memory design).
+    sessions.py     Closes finished conversations and writes their recaps.
     speech.py       Text to speech (ElevenLabs / OpenAI) behind one function.
     claude_client.py Every Claude call goes through here.
     models.py       goals / tasks / sessions / summaries
@@ -66,11 +67,36 @@ The thing this app must not do is stuff every past conversation into the context
 window. So it doesn't:
 
 - **Goals and tasks are structured data**, rendered into the prompt from SQLite.
-- **After a session, the model writes a compact recap** of what happened and what was
-  committed to (`POST /api/sessions/{id}/close`).
+- **When a conversation ends, the model writes a compact recap** of what happened and
+  what was committed to.
 - **The next session loads** the system prompt + current goals/tasks + the last N recaps
   (`COACH_RECENT_SUMMARY_COUNT`, default 8). Transcripts are stored for the record but
   are **never** replayed to the model.
+
+### How a conversation "ends"
+
+Nobody taps a done button on a voice app — you put the phone down mid-thought. So the
+signal is idleness: a session quiet for `COACH_SESSION_IDLE_MINUTES` (default 45) is
+finished, and gets its recap written by the next request that comes along
+(`app/sessions.py`).
+
+Doing this lazily rather than on a scheduler means no background worker to run or
+monitor, and it happens at exactly the right moment — the sweep runs *before* the next
+turn's context is assembled, so a recap written here is in front of the model for the
+very turn that triggered it.
+
+Guards worth knowing, because each is a way this could go wrong:
+
+- The session you're currently talking to is never swept, however long the pause.
+- At most `COACH_MAX_SESSIONS_CLOSED_PER_REQUEST` (default 3) are summarised per
+  request, oldest first, so a long gap can't turn one message into a pile of API calls.
+- A session that was opened but never used is closed without paying for a summary.
+- If summarising fails, the conversation you're having is unaffected: the error is
+  logged, the session stays open, and its clock is pushed forward so it retries after
+  another idle window rather than on every request while the API is unhappy.
+
+`POST /api/sessions/{id}/close` still exists to end one immediately; it runs the same
+code path.
 
 Token use per turn therefore stays flat no matter how long the app has been in use.
 

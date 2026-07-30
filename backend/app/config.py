@@ -87,6 +87,15 @@ class Settings(BaseSettings):
     # purged, so this bounds the *undo affordance*, not recoverability by hand.
     undo_window_seconds: int = 300
 
+    # --- Sessions ---
+    # A conversation is treated as over once it's been quiet this long, at which point
+    # its recap gets written. Nobody taps "done" on a voice app, so idleness is the only
+    # signal there is.
+    session_idle_minutes: int = 45
+    # Ceiling on how many stale sessions one request will summarise, so a long gap or a
+    # backlog can't turn a single message into a pile of API calls.
+    max_sessions_closed_per_request: int = 3
+
     # --- Memory window ---
     # How many recent session summaries get loaded into context. Bounded on purpose:
     # transcripts are never replayed, only these recaps.

@@ -92,6 +92,9 @@ class CheckInSession(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Bumped on every turn. A conversation is "over" when this stops moving, which is
+    # the only signal available — nobody taps a "done" button on a voice app.
+    last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     # JSON array of {"role": ..., "content": ...} turns.
     transcript: Mapped[str] = mapped_column(Text, default="[]")
