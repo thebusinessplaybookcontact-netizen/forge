@@ -28,9 +28,30 @@ export interface Summary {
   created_at: string;
 }
 
+export type Cadence = "daily" | "weekly";
+
+export interface Habit {
+  id: number;
+  text: string;
+  cadence: Cadence;
+  target_per_week: number;
+  why: string | null;
+  linked_goal_id: number | null;
+
+  done_today: boolean;
+  this_week: number;
+  current_streak: number;
+  longest_streak: number;
+  completion_rate_30d: number;
+  /** Oldest-first, one boolean per day, starting at grid_start. */
+  grid_start: string;
+  grid: boolean[];
+}
+
 export interface Dashboard {
   goals: Goal[];
   open_tasks: Task[];
+  habits: Habit[];
   recent_summaries: Summary[];
 }
 

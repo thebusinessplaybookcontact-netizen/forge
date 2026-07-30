@@ -267,6 +267,10 @@ def apply_undo(db: Session, undo_id: int | None = None) -> UndoEntry:
         restore_task(db, entry.target_id)
     elif entry.target_type == "goal":
         restore_goal(db, entry.target_id)
+    elif entry.target_type == "habit":
+        from . import habits
+
+        habits.restore_habit(db, entry.target_id)
     else:
         raise CrudError(f"Don't know how to undo a '{entry.target_type}'.")
 

@@ -333,6 +333,9 @@ def test_tools_are_sent_on_every_request(client, monkeypatch, seeded):
         "add_goal",
         "update_goal",
         "delete_goal",
+        "add_habit",
+        "log_habit",
+        "unlog_habit",
         "undo_last",
     ], "tool order must stay stable — reordering invalidates the prompt cache"
     assert all("input_schema" in t and t["description"] for t in sent)

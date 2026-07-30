@@ -133,7 +133,57 @@ class SessionOut(BaseModel):
     ended_at: datetime | None
 
 
+# --- Habits ---
+
+Cadence = Literal["daily", "weekly"]
+
+
+class HabitCreate(BaseModel):
+    text: str = Field(min_length=1)
+    cadence: Cadence = "daily"
+    target_per_week: int = Field(default=7, ge=1, le=7)
+    why: str | None = None
+    linked_goal_id: int | None = None
+
+
+class HabitUpdate(BaseModel):
+    text: str | None = None
+    cadence: Cadence | None = None
+    target_per_week: int | None = Field(default=None, ge=1, le=7)
+    why: str | None = None
+    linked_goal_id: int | None = None
+
+
+class HabitOut(BaseModel):
+    """A habit plus everything needed to render it, in one object.
+
+    The stats are computed, not stored, so there's no version of this where the
+    displayed streak and the entries disagree.
+    """
+
+    id: int
+    text: str
+    cadence: Cadence
+    target_per_week: int
+    why: str | None
+    linked_goal_id: int | None
+
+    done_today: bool
+    this_week: int
+    current_streak: int
+    longest_streak: int
+    completion_rate_30d: float
+    # Oldest-first booleans for the consistency grid, with the date the run starts.
+    grid_start: date
+    grid: list[bool]
+
+
+class LogHabitRequest(BaseModel):
+    on: date | None = None
+
+
 class DashboardOut(BaseModel):
     goals: list[GoalOut]
     open_tasks: list[TaskOut]
+    habits: list[HabitOut]
     recent_summaries: list[SummaryOut]

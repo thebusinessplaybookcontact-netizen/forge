@@ -4,12 +4,14 @@ import AuthGate from "./AuthGate";
 import { ChatProvider } from "./ChatContext";
 import Chat from "./pages/Chat";
 import Goals from "./pages/Goals";
+import Habits from "./pages/Habits";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 
 const NAV = [
   { to: "/", label: "Home", end: true },
   { to: "/chat", label: "Chat", end: false },
+  { to: "/habits", label: "Habits", end: false },
   { to: "/goals", label: "Goals", end: false },
   { to: "/settings", label: "Settings", end: false },
 ];
@@ -27,6 +29,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/chat" element={<Chat />} />
+              <Route path="/habits" element={<Habits />} />
               <Route path="/goals" element={<Goals />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />

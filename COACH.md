@@ -15,16 +15,19 @@ backend/            FastAPI. Holds the Claude key. Does the memory glue.
     tools.py        Tool schemas + argument validation + dispatch.
     agent.py        The tool_use -> execute -> tool_result loop.
     crud.py         Every DB mutation. Shared by the HTTP routes and the tools.
+    habits.py       Streaks, cadence and consistency. The measurement lives here.
     memory.py       Assembles what the model sees (see Memory design).
     sessions.py     Closes finished conversations and writes their recaps.
     speech.py       Text to speech (ElevenLabs / OpenAI) behind one function.
     claude_client.py Every Claude call goes through here.
-    models.py       goals / tasks / sessions / summaries
-    routers/        chat.py, goals.py (goals, tasks, dashboard), voice.py (TTS)
+    models.py       goals / tasks / habits / sessions / summaries
+    routers/        chat.py, goals.py (goals, tasks, dashboard),
+                    habits_routes.py, voice.py (TTS)
   tests/            Tool loop and chat tested with the API stubbed, DB writes real.
 frontend/           React + Vite, installable as a PWA.
-  src/pages/        Home (dashboard + chat box), Chat, Goals, Settings
-  src/components/   GoalRow / TaskRow (view + inline edit), Composer, ActionNote
+  src/pages/        Home (dashboard + chat box), Chat, Habits, Goals, Settings
+  src/components/   GoalRow / TaskRow (view + inline edit), HabitRow / HabitCard /
+                    HabitGrid (the chain), Composer, ActionNote
 Dockerfile          Builds the PWA and serves it from the API as one service.
 ```
 
@@ -149,6 +152,9 @@ back.
 | `add_goal` | `text`, `horizon`, `why?` | `horizon` is `daily`/`weekly`/`lifetime` |
 | `update_goal` | `goal_id`, `text?`, `why?`, `horizon?`, `status?` | Only supplied fields change |
 | `delete_goal` | `goal_id` | Soft delete, reversible. Prefer `status: done`/`paused` |
+| `add_habit` | `text`, `cadence?`, `target_per_week?`, `why?`, `linked_goal_id?` | `cadence` is `daily`/`weekly` |
+| `log_habit` | `habit_id`, `on?` | Idempotent — logging twice is not two |
+| `unlog_habit` | `habit_id`, `on?` | For the mis-tap, or "actually I didn't" |
 | `undo_last` | — | Reverses the most recent deletion, so "undo" works by voice |
 
 Schemas live in `backend/app/tools.py`, so the persona prompt stays about tone and the
@@ -179,6 +185,48 @@ Note that tool blocks are not replayed in later turns' history: a `tool_use` onl
 be answered within the turn it happened in. Subsequent turns see the *result* of the
 change, because the current goals and tasks are re-rendered into the system prompt each
 time.
+
+## Habits — the repeating things
+
+Goals are outcomes and tasks happen once; habits are the part that actually moves either
+one, so they get their own screen, their own tools, and their own line in the system
+prompt. `backend/app/habits.py` owns the measurement, `frontend/src/pages/Habits.tsx`
+owns the screen, and the coach sees each habit's streak and consistency rate every turn.
+
+The measurement design is deliberate, and it's where most trackers get it wrong. The
+research cuts both ways: an unbroken chain is genuinely motivating through loss aversion,
+but breaking one reliably triggers the "what's the point" collapse — and habit-formation
+research finds that missing a single day doesn't measurably set the habit back. So an
+all-or-nothing daily streak is both psychologically risky and factually wrong. That
+matters more here than in a normal tracker, because this app has a coach with a licence
+to be blunt, and a brittle streak counter plus tough love is exactly the combination that
+makes someone quit.
+
+Hence:
+
+* **Cadence is flexible.** "Three times a week" is a first-class target, not a daily habit
+  you fail four days out of seven. A weekly habit that hit its target reads *Done for the
+  week*, not "behind".
+* **Streaks count scheduled units, not raw days.** A 3×/week habit doesn't break because
+  you skipped Tuesday; it breaks when a whole week misses target.
+* **Today is never a failure.** A day that hasn't happened yet can't break a streak, and
+  neither can the current week while it's still running.
+* **Consistency sits next to the streak.** The 30-day completion rate survives a missed
+  day, so there's always a number on screen saying "this is still going well" when the
+  chain resets. It's measured from the habit's creation date, so a habit started three days
+  ago doesn't show 10% just because the window is 30 days long.
+* **The UI never prints "0 day streak".** A reset chain says *Pick it back up today*. The
+  persona prompt carries the matching instruction: never pile on about a broken streak.
+
+The chain itself is a nine-week grid — weeks across, weekdays down, the shape people
+already know from contribution graphs — because it shows the *pattern* (weekends always
+blank, a bad fortnight in March) rather than a number claiming to summarise it. Squares
+are tappable to fill in a day you forgot; every log call returns the recomputed stats, so
+ticking a box updates the streak without a refetch.
+
+Entries are `(habit_id, done_on)` with a unique constraint, keyed on the **local** date
+rather than a timestamp — see the timezone note under Configuration. Deleting a habit is
+a soft delete like everything else, so the history survives and comes back with the undo.
 
 ## What it costs
 
@@ -286,7 +334,8 @@ voice rather than silence.
 Voice will mishear things, and a deleted task shouldn't be a lost task. So there are no
 hard deletes anywhere in the app:
 
-- `delete_task` and `delete_goal` set `deleted_at` instead of removing the row.
+- `delete_task`, `delete_goal` and deleting a habit set `deleted_at` instead of removing
+  the row. A deleted habit keeps every entry it logged, so restoring it restores the chain.
 - **Every read filters soft-deleted rows out.** That's the safety property — code that
   forgets `deleted_at` exists gets the safe behaviour by default, because seeing a
   deleted row requires asking for it explicitly (`get_task(..., include_deleted=True)`).
@@ -321,11 +370,12 @@ Goals screen the way you'd actually say them. The seeded ones are placeholders.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Liveness + whether the key is configured |
-| `GET` | `/api/dashboard` | Goals, open tasks, recent recaps — one call for Home |
+| `GET` | `/api/dashboard` | Goals, open tasks, habits, recent recaps — one call for Home |
 | `POST` | `/api/chat` | One coaching turn (JSON). Returns `actions[]` — what the coach changed |
 | `POST` | `/api/chat/stream` | Same turn as SSE: `session`, `delta`, `action`, `done`, `error` events |
 | `POST` | `/api/sessions/{id}/close` | End session, write its recap |
-| | `/api/goals`, `/api/tasks` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`). `DELETE` is soft and returns `undo_id` |
+| | `/api/goals`, `/api/tasks`, `/api/habits` | CRUD (`GET`/`POST`/`PATCH`/`DELETE`). `DELETE` is soft and returns `undo_id` |
+| `POST` | `/api/habits/{id}/log`, `/unlog` | Tick or untick a day (`{"on": "YYYY-MM-DD"}`, defaults to today). Returns the habit with recomputed stats |
 | `POST` | `/api/undo` | Reverse the most recent deletion |
 | `POST` | `/api/undo/{undo_id}` | Reverse one specific change (410 if the window has passed) |
 | `GET` | `/api/usage` | Token usage and estimated cost for today / 7 / 30 days |

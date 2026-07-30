@@ -1,4 +1,4 @@
-import type { Dashboard, Goal, Task } from "./types";
+import type { Dashboard, Goal, Habit, Task } from "./types";
 
 // Same-origin in production (the API serves the built PWA); the Vite dev server
 // proxies /api to the backend. Either way the Claude key stays server-side.
@@ -93,6 +93,28 @@ export const updateTask = (id: number, body: Partial<Task>) =>
   request<Task>(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 export const deleteTask = (id: number) =>
   request<DeleteResult>(`/tasks/${id}`, { method: "DELETE" });
+
+// --- habits ---
+//
+// Every habit call answers with the habit *and* its recomputed stats, so ticking a box
+// updates the streak without a second round trip. The date argument is optional and
+// only sent when back-filling a day you forgot to tick.
+
+export const getHabits = () => request<Habit[]>("/habits");
+export const createHabit = (body: Partial<Habit>) =>
+  request<Habit>("/habits", { method: "POST", body: JSON.stringify(body) });
+export const updateHabit = (id: number, body: Partial<Habit>) =>
+  request<Habit>(`/habits/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const deleteHabit = (id: number) =>
+  request<DeleteResult>(`/habits/${id}`, { method: "DELETE" });
+
+export const logHabit = (id: number, on?: string) =>
+  request<Habit>(`/habits/${id}/log`, { method: "POST", body: JSON.stringify({ on: on ?? null }) });
+export const unlogHabit = (id: number, on?: string) =>
+  request<Habit>(`/habits/${id}/unlog`, {
+    method: "POST",
+    body: JSON.stringify({ on: on ?? null }),
+  });
 
 export const closeSession = (id: number) =>
   request<{ session_id: number; recap: string; commitments: string[] }>(`/sessions/${id}/close`, {

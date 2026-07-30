@@ -32,9 +32,13 @@ def _not_found(exc: crud.NotFound) -> HTTPException:
 @router.get("/dashboard", response_model=DashboardOut)
 def dashboard(db: Session = Depends(get_db)) -> DashboardOut:
     """Everything the home screen needs in one call."""
+    from .. import habits
+    from .habits_routes import to_out
+
     return DashboardOut(
         goals=crud.list_goals(db, active_only=True),
         open_tasks=crud.list_tasks(db, open_only=True),
+        habits=[to_out(s) for s in habits.all_stats(db)],
         recent_summaries=list(reversed(crud.list_recent_summaries(db, limit=3))),
     )
 

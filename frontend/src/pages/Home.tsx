@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getDashboard, updateTask } from "../api";
+import { getDashboard, logHabit, unlogHabit, updateTask } from "../api";
 import { useChatContext } from "../ChatContext";
 import { todayISO } from "../dates";
 import ActionNote from "../components/ActionNote";
 import Composer from "../components/Composer";
 import DueChip from "../components/DueChip";
-import type { Dashboard } from "../types";
+import HabitRow, { weekMet } from "../components/HabitRow";
+import type { Dashboard, Habit } from "../types";
 
 export default function Home() {
   const [data, setData] = useState<Dashboard | null>(null);
@@ -28,6 +29,21 @@ export default function Home() {
     load();
   }
 
+  /** Tick today's habit. The response carries the recomputed streak, so patch in place
+      rather than refetching the whole dashboard for one boolean. */
+  async function toggleHabit(habit: Habit) {
+    try {
+      const updated = habit.done_today ? await unlogHabit(habit.id) : await logHabit(habit.id);
+      setData((current) =>
+        current
+          ? { ...current, habits: current.habits.map((h) => (h.id === updated.id ? updated : h)) }
+          : current,
+      );
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   // The tail of the conversation, so talking from this screen is useful without
   // leaving it. The full transcript lives on /chat.
   const recent = entries.slice(-4);
@@ -40,6 +56,24 @@ export default function Home() {
       </header>
 
       {error && <p className="chat__error">{error}</p>}
+
+      {data && data.habits.length > 0 && (
+        <section className="panel">
+          <div className="panel__head">
+            <h2 className="panel__title">Habits</h2>
+            {/* Weekly habits that already hit their target count as done — a 3×/week
+                habit finished on Thursday shouldn't drag the day's count down. */}
+            <span className="panel__count">
+              {data.habits.filter((h) => h.done_today || weekMet(h)).length}/{data.habits.length}
+            </span>
+          </div>
+          <ul className="habits">
+            {data.habits.map((habit) => (
+              <HabitRow key={habit.id} habit={habit} onToggle={() => toggleHabit(habit)} />
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="panel">
         <h2 className="panel__title">Quests</h2>

@@ -11,7 +11,7 @@ from . import auth
 from .claude_client import ClaudeNotConfigured
 from .config import get_settings
 from .db import init_db
-from .routers import auth_routes, chat, goals, voice
+from .routers import auth_routes, chat, goals, habits_routes, voice
 
 log = logging.getLogger("coach")
 
@@ -68,6 +68,7 @@ async def require_session(request: Request, call_next):
 app.include_router(auth_routes.router)
 app.include_router(chat.router)
 app.include_router(goals.router)
+app.include_router(habits_routes.router)
 app.include_router(voice.router)
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -82,6 +82,51 @@ class UndoEntry(Base):
     label: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
+class Cadence(str, enum.Enum):
+    daily = "daily"
+    weekly = "weekly"  # target_per_week times, any days
+
+
+class Habit(Base):
+    """Something repeated, as opposed to a task that's done once and gone.
+
+    Separate from tasks on purpose: ticking "leg day" off a to-do list destroys the
+    information that matters here, which is the pattern over weeks.
+    """
+
+    __tablename__ = "habits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    cadence: Mapped[Cadence] = mapped_column(Enum(Cadence), default=Cadence.daily)
+    # Only meaningful for weekly cadence; daily habits are effectively 7.
+    target_per_week: Mapped[int] = mapped_column(Integer, default=7)
+    why: Mapped[str | None] = mapped_column(Text, default=None)
+    linked_goal_id: Mapped[int | None] = mapped_column(ForeignKey("goals.id"), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+    entries: Mapped[list[HabitEntry]] = relationship(
+        back_populates="habit", cascade="all, delete-orphan"
+    )
+
+
+class HabitEntry(Base):
+    """One day a habit was done. Absence means not done — there are no 'missed' rows."""
+
+    __tablename__ = "habit_entries"
+    __table_args__ = (UniqueConstraint("habit_id", "done_on", name="uq_habit_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    habit_id: Mapped[int] = mapped_column(ForeignKey("habits.id"), nullable=False)
+    # Stored as a local date, not a timestamp: "did I do it Tuesday" is a calendar
+    # question, and a UTC timestamp would put late-evening entries on the wrong day.
+    done_on: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    habit: Mapped[Habit] = relationship(back_populates="entries")
 
 
 class UsageEvent(Base):

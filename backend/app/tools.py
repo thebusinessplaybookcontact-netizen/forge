@@ -21,8 +21,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
-from . import crud
-from .models import Goal, Task
+from . import crud, habits
+from .models import Goal, Habit, Task
 
 # Tool definitions render *before* the system prompt in the request, so this list is
 # part of the cached prefix. Keep the order stable — reordering it silently invalidates
@@ -164,6 +164,61 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "add_habit",
+        "description": (
+            "Start tracking something Kyle does repeatedly — training, writing, reading. "
+            "Use this instead of add_task when it recurs. Cadence 'daily' for every day, "
+            "or 'weekly' with target_per_week for things like three gym sessions a week. "
+            "Prefer a weekly target when he says 'a few times a week' — a realistic "
+            "target he hits beats a daily one he keeps missing."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "The habit, e.g. 'Train'."},
+                "cadence": {"type": "string", "enum": ["daily", "weekly"]},
+                "target_per_week": {
+                    "type": "integer",
+                    "description": "How many times a week, for weekly cadence. 1-7.",
+                },
+                "why": {"type": "string", "description": "His reason, in his words."},
+                "linked_goal_id": {"type": "integer", "description": "Goal this serves."},
+            },
+            "required": ["text", "cadence"],
+        },
+    },
+    {
+        "name": "log_habit",
+        "description": (
+            "Record that Kyle did a habit. Use it the moment he mentions doing one, even "
+            "in passing ('got the gym in this morning'). Defaults to today; pass a date "
+            "for 'I did it yesterday'. Logging the same day twice is harmless."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "habit_id": {"type": "integer"},
+                "on": {"type": "string", "description": "YYYY-MM-DD. Omit for today."},
+            },
+            "required": ["habit_id"],
+        },
+    },
+    {
+        "name": "unlog_habit",
+        "description": (
+            "Remove a habit log, for when it was recorded by mistake. Don't use this as "
+            "punishment for a bad day — only when the record is actually wrong."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "habit_id": {"type": "integer"},
+                "on": {"type": "string", "description": "YYYY-MM-DD. Omit for today."},
+            },
+            "required": ["habit_id"],
+        },
+    },
+    {
         "name": "undo_last",
         "description": (
             "Reverse the most recent deletion. Use this when Kyle says 'undo', 'never "
@@ -216,6 +271,19 @@ class DeleteGoal(BaseModel, extra="forbid"):
 
 class UndoLast(BaseModel, extra="forbid"):
     pass
+
+
+class AddHabit(BaseModel, extra="forbid"):
+    text: str = Field(min_length=1)
+    cadence: Literal["daily", "weekly"]
+    target_per_week: int = Field(default=7, ge=1, le=7)
+    why: str | None = None
+    linked_goal_id: int | None = None
+
+
+class LogHabit(BaseModel, extra="forbid"):
+    habit_id: int
+    on: date | None = None
 
 
 class AddGoal(BaseModel, extra="forbid"):
@@ -273,6 +341,15 @@ def _goal_view(goal: Goal) -> dict:
         "horizon": goal.horizon.value,
         "status": goal.status.value,
         "why": goal.why,
+    }
+
+
+def _habit_view(habit: Habit) -> dict:
+    return {
+        "id": habit.id,
+        "text": habit.text,
+        "cadence": habit.cadence.value,
+        "target_per_week": habit.target_per_week,
     }
 
 
@@ -362,6 +439,54 @@ def _dispatch(db: Session, name: str, raw: dict) -> ToolOutcome:
             f"Deleted goal {goal.id}: {goal.text}. Reversible with undo_last.",
             summary=f"Deleted goal “{goal.text}”",
             undo_id=undo.id,
+        )
+
+    if name == "add_habit":
+        args = AddHabit.model_validate(raw)
+        habit = habits.create_habit(
+            db,
+            text=args.text,
+            cadence=args.cadence,
+            target_per_week=args.target_per_week,
+            why=args.why,
+            linked_goal_id=args.linked_goal_id,
+        )
+        cadence = "daily" if habit.cadence.value == "daily" else f"{habit.target_per_week}x per week"
+        return ToolOutcome(
+            name,
+            True,
+            f"Tracking habit {habit.id}: {habit.text} ({cadence})",
+            summary=f"Now tracking “{habit.text}” ({cadence})",
+            entity=_habit_view(habit),
+        )
+
+    if name in ("log_habit", "unlog_habit"):
+        args = LogHabit.model_validate(raw)
+        action = habits.log if name == "log_habit" else habits.unlog
+        stats = action(db, args.habit_id, args.on)
+        habit = stats.habit
+
+        if name == "unlog_habit":
+            return ToolOutcome(
+                name,
+                True,
+                f"Removed the log for {habit.text} on {args.on or 'today'}.",
+                summary=f"Unlogged “{habit.text}”",
+                entity=_habit_view(habit),
+            )
+
+        # Hand the model the numbers so it can react specifically rather than generically.
+        if habit.cadence.value == "daily":
+            progress = f"streak now {stats.current_streak} days"
+        else:
+            progress = f"{stats.this_week} of {stats.target_per_week} this week"
+        return ToolOutcome(
+            name,
+            True,
+            f"Logged {habit.text} for {args.on or 'today'}; {progress}, "
+            f"{round(stats.completion_rate_30d * 100)}% consistent over 30 days.",
+            summary=f"Logged “{habit.text}” — {progress}",
+            entity=_habit_view(habit),
         )
 
     if name == "undo_last":

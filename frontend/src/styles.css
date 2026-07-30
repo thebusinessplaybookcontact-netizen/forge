@@ -348,6 +348,201 @@ button {
   background: var(--danger-wash);
 }
 
+/* ------------------------------------------------------------- habits */
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.panel__count {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.habits {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.habit {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--tap);
+  padding: var(--s2) 0;
+}
+
+.habit + .habit {
+  border-top: 1px solid var(--line);
+}
+
+/* A rounded square rather than the tasks' circle: a habit isn't finished when you
+   tick it, it comes back tomorrow, and the shape says so before the label does. */
+.habit__tick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--accent-on);
+  font-size: var(--t-sm);
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.habit__tick:hover {
+  border-color: var(--accent);
+}
+
+.habit__tick--done {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.habit__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.habit__text {
+  margin: 0;
+}
+
+.habit__meta {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A weekly habit that hit its target is finished, not merely in progress. */
+.habit__meta--met {
+  color: var(--accent);
+}
+
+.habit__week {
+  flex: none;
+  display: flex;
+  gap: 3px;
+}
+
+.habit__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.habit__dot--on {
+  background: var(--accent);
+}
+
+.habit-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s6);
+}
+
+.habit-card .habit {
+  padding-top: 0;
+}
+
+/* The card shows the full chain directly below, so the seven-day strip would be the
+   same information twice — and it's the row's least important element. */
+.habit-card .habit__week {
+  display: none;
+}
+
+.habit-card__foot {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--t-sm);
+}
+
+.habit-card__why {
+  font-family: var(--read);
+}
+
+/* The chain: weeks across, weekdays down. Deliberately small — it's meant to be read
+   as a pattern at a glance, not counted square by square. */
+.chain {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s2);
+}
+
+.chain__days {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+.chain__days span {
+  display: flex;
+  align-items: center;
+}
+
+.chain .grid {
+  flex: 1;
+}
+
+.grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  width: 100%;
+  max-width: 13rem;
+}
+
+.grid__cell {
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: var(--sunken);
+}
+
+button.grid__cell {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+button.grid__cell:hover {
+  background: var(--line-strong);
+}
+
+.grid__cell--done,
+button.grid__cell--done:hover {
+  background: var(--accent);
+}
+
+.grid__cell--today {
+  outline: 1.5px solid var(--ink-faint);
+  outline-offset: 1px;
+}
+
+.habits-page__hint {
+  font-size: var(--t-sm);
+}
+
 /* -------------------------------------------------------------- goals */
 
 .goal {

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from . import clock, crud
+from . import clock, crud, habits
 from .models import CheckInSession, Goal, Horizon, Summary, Task
 from .prompts import COACH_PERSONA, build_state_block
 
@@ -58,6 +58,38 @@ def _format_tasks(tasks: list[Task], goals: list[Goal]) -> str:
     return "\n".join(lines)
 
 
+def _format_habits(stats: list) -> str:
+    """Habits with enough context for the coach to be specific rather than nagging.
+
+    Deliberately shows consistency alongside the streak: if only the streak were here,
+    a reset would look like total failure to a coach with a licence to be blunt, which
+    is exactly the response that makes people quit.
+    """
+    if not stats:
+        return "(None yet. If Kyle describes something he wants to do regularly, offer to track it.)"
+
+    lines = []
+    for s in stats:
+        habit = s.habit
+        if habit.cadence.value == "daily":
+            cadence = "daily"
+            progress = "done today" if s.done_today else "not yet today"
+        else:
+            cadence = f"{s.target_per_week}x per week"
+            progress = f"{s.this_week} of {s.target_per_week} this week"
+
+        bits = [f"streak {s.current_streak} {s.streak_unit}{'s' if s.current_streak != 1 else ''}"]
+        bits.append(f"{round(s.completion_rate_30d * 100)}% consistent over 30 days")
+        if s.longest_streak > s.current_streak:
+            bits.append(f"best {s.longest_streak}")
+
+        line = f"- [{habit.id}] {habit.text} ({cadence}) — {progress}; {', '.join(bits)}"
+        if habit.why:
+            line += f"\n      why: {habit.why}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _format_summaries(summaries: list[Summary]) -> str:
     if not summaries:
         return "(No previous sessions. This is the first conversation.)"
@@ -92,10 +124,12 @@ def build_system_blocks(db: Session) -> list[dict]:
     goals = crud.list_goals(db, active_only=True)
     tasks = crud.list_tasks(db, open_only=True)
     summaries = crud.list_recent_summaries(db)
+    habit_stats = habits.all_stats(db)
 
     state = build_state_block(
         goals_block=_format_goals(goals),
         tasks_block=_format_tasks(tasks, goals),
+        habits_block=_format_habits(habit_stats),
         summaries_block=_format_summaries(summaries),
         today=clock.today_local().isoformat(),
     )

@@ -10,3 +10,31 @@ export function todayISO(date = new Date()): string {
   const day = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${day}`;
 }
+
+/**
+ * Parse YYYY-MM-DD as a *local* date.
+ *
+ * `new Date("2026-07-30")` is parsed as UTC midnight by spec, which lands on the 29th
+ * for anyone behind Greenwich — the same off-by-one-day bug as above, in reverse.
+ */
+export function parseISO(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+/** Monday = 0 … Sunday = 6, matching the backend's week_start(). */
+export function mondayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+const NICE = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+export function niceDate(iso: string): string {
+  return NICE.format(parseISO(iso));
+}
