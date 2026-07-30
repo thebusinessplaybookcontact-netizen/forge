@@ -1,0 +1,21 @@
+# Without this, `COPY frontend/ ./` drags the host's node_modules into the build —
+# slow, and it can shadow the clean install the previous layer just did.
+node_modules
+frontend/node_modules
+frontend/dist
+**/*.tsbuildinfo
+
+# Never bake secrets or a local database into an image.
+.env
+backend/.env
+*.db
+*.sqlite3
+
+.venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+
+.git
+.gitignore

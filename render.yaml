@@ -1,0 +1,22 @@
+# Render alternative to railway.json — same image, same single service.
+# Railway is the primary target; this exists because the spec allowed either.
+services:
+  - type: web
+    name: goal-coach
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    # SQLite needs a disk, or the database is lost on every deploy.
+    disk:
+      name: coach-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false # set in the dashboard, never in the repo
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: COACH_DATA_DIR
+        value: /data
+      - key: COACH_CORS_ORIGINS
+        value: ""

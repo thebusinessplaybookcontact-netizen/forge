@@ -212,13 +212,42 @@ Goals screen the way you'd actually say them. The seeded ones are placeholders.
 
 ## Deploying
 
-Railway, via the Dockerfile — it builds the PWA and serves it from the API, so it's one
-service, not two. Set `ANTHROPIC_API_KEY` in the Railway environment. `railway.json`
-points the healthcheck at `/api/health`.
+One service, not two: the Dockerfile builds the PWA and the API serves it from the same
+origin, so there's no CORS and no second deploy to keep in sync.
 
-SQLite lives on the container filesystem, which on Railway means **it does not survive a
-redeploy**. Attach a volume and point `COACH_DATABASE_URL` at it, or move to Postgres,
-before there's data worth keeping.
+**Railway** (primary target — `railway.json` sets the healthcheck to `/api/health`):
+
+1. Point a new project at this repo. It'll pick up the Dockerfile.
+2. **Add a volume and mount it at `/data`.** Do this before the first real
+   conversation — see below.
+3. Set variables: `ANTHROPIC_API_KEY`, plus `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` if
+   you want the human voice. `COACH_DATA_DIR=/data` and `COACH_CORS_ORIGINS=""` are
+   already baked into the image.
+4. Deploy, then open `/api/health` — `claude_configured` should be `true`, and
+   `/api/voice/status` tells you whether the human voice is live.
+
+**Render** is configured too (`render.yaml`, disk mounted at `/data`) since the spec
+allowed either.
+
+### The volume is not optional
+
+SQLite lives on the container filesystem. Without a volume the database is part of the
+image, so **every redeploy silently starts you from an empty list** — no error, just a
+coach that's forgotten everything. `COACH_DATA_DIR=/data` plus a mounted volume moves the
+file outside the container. This is verified: a rebuilt container against the same volume
+keeps its goals and tasks, and the same image without the volume comes up empty.
+
+To move to Postgres later, set `COACH_DATABASE_URL` and install a driver
+(`pip install "psycopg[binary]"`, URL `postgresql+psycopg://...`). Nothing else changes —
+but there are no migrations, so do it before the data matters.
+
+### Serving, verified
+
+The production layout was exercised end to end (health, SPA root, client-side deep links
+like `/goals`, the manifest and service worker, the API, and absent CORS headers).
+Building the image itself has **not** been run — there was no Docker daemon available —
+so the first `docker build` is still unproven. `npm ci` against the committed lockfile
+was checked separately, since that's the step most likely to fail the build.
 
 ## Build order
 
@@ -229,7 +258,8 @@ before there's data worth keeping.
 4b. ~~Tool use — the coach edits goals and tasks from conversation~~ ✅
 4c. ~~Soft delete + undo, and a live-updating dashboard~~ ✅
 5. ~~Voice — STT in, human TTS out, with the toggle~~ ✅
-6. Deploy hosted — Dockerfile and railway.json are ready.
+6. Deploy hosted — config ready and the production layout verified; the actual deploy
+   needs your Railway account. See Deploying.
 7. Polish pass with the frontend-design skill.
 
 Phase 2, not started: scheduled nudges, cheaper model routing for routine calls, the
@@ -240,8 +270,16 @@ literal quest/game layer.
 - **No migrations.** Tables come from `create_all` on startup, and columns added to an
   existing model are patched in by `_ADDED_COLUMNS` in `db.py` (SQLite `ALTER TABLE`).
   That's a stopgap, not a migration system — add Alembic before the schema matters.
-- **No auth.** Anyone with the URL can talk to your coach and spend your tokens. Fine on
-  a private URL; not fine indefinitely.
+- **No auth — read this before making the URL public.** Anyone with the link can talk to
+  your coach, read your goals, and spend your Claude and TTS credits. A hosted URL is
+  guessable in a way `localhost` isn't, so this stops being theoretical the moment you
+  deploy. Put it behind Railway's private networking, an auth proxy, or at minimum a
+  shared secret before sharing the link anywhere.
+- **react-router advisory GHSA-qwww-vcr4-c8h2** (high) is open with no fix published —
+  it's flagged as fixed in >8.2.0 and the latest release is 7.18.2. It concerns RSC-mode
+  action handling; this app uses plain client-side `BrowserRouter` with no server
+  components, data actions, or loaders, so it isn't reachable here. Re-check when 8.x
+  ships.
 - **Soft-deleted rows are never purged.** Deliberate, but the tables only grow. A
   "permanently forget this" path will eventually be wanted.
 - **Undo covers deletions, not edits.** If the coach rewords a task wrongly, there's no

@@ -8,9 +8,14 @@ from .config import get_settings
 settings = get_settings()
 
 # check_same_thread=False is required because FastAPI serves requests from a threadpool.
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+connect_args = {"check_same_thread": False} if settings.is_sqlite else {}
 
-engine = create_engine(settings.database_url, connect_args=connect_args, future=True)
+if settings.is_sqlite:
+    # A freshly mounted volume is an empty directory that may not exist yet; without
+    # this the first connection fails with "unable to open database file".
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+
+engine = create_engine(settings.resolved_database_url, connect_args=connect_args, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
 
 

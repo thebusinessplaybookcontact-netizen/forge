@@ -35,7 +35,16 @@ class Settings(BaseSettings):
     claude_max_tokens: int = 2048
 
     # --- Storage ---
-    database_url: str = f"sqlite:///{BACKEND_DIR / 'coach.db'}"
+    # Where the SQLite file lives. On a hosting platform this must point at a mounted
+    # volume, or the database is inside the container filesystem and every redeploy
+    # silently starts you from zero. On Railway: add a volume, mount it at /data, and
+    # set COACH_DATA_DIR=/data.
+    data_dir: Path = BACKEND_DIR
+
+    # Set this to override entirely — e.g. a Postgres URL. Leave empty to use SQLite in
+    # data_dir. (Postgres also needs a driver: pip install "psycopg[binary]" and use
+    # postgresql+psycopg://...)
+    database_url: str = ""
 
     # --- Voice (text to speech) ---
     # Speech-to-text is the phone's own engine and costs nothing, so it needs no config.
@@ -86,6 +95,17 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def resolved_database_url(self) -> str:
+        """An explicit COACH_DATABASE_URL wins; otherwise SQLite inside data_dir."""
+        if self.database_url:
+            return self.database_url
+        return f"sqlite:///{self.data_dir / 'coach.db'}"
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.resolved_database_url.startswith("sqlite")
 
 
 @lru_cache
