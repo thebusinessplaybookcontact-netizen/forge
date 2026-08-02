@@ -4,19 +4,32 @@
 #   irm https://raw.githubusercontent.com/thebusinessplaybookcontact-netizen/forge/main/setup.ps1 | iex
 #
 # Installs Python, Node and Git if they're missing, downloads the app, asks for the
-# Claude key, builds everything, and starts it. Safe to run again — it skips whatever
-# is already done, so if it dies halfway you just run it a second time.
+# Claude key, builds everything, and starts it. Safe to run again — every step checks
+# whether it's already done, so a half-finished attempt is fixed by re-running.
 #
-# Deliberately does the frontend as a production build served by the backend, so there
-# is ONE window and ONE address instead of two of each. Nobody wants to babysit two
-# terminals to talk to a to-do list.
+# Deliberately serves the production build from the backend rather than running Vite
+# alongside it, so there is ONE window and ONE address instead of two of each.
 
 $ErrorActionPreference = "Stop"
+
+# Windows blocks unsigned .ps1 files by default, and npm ships its own PowerShell
+# wrapper — so `npm install` dies with "running scripts is disabled on this system"
+# even though nothing is wrong. This lifts the block for THIS process only; nothing
+# about the machine's settings changes, and it's gone when the window closes.
+try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force } catch {}
 
 function Say  ($m) { Write-Host ""; Write-Host "  $m" -ForegroundColor Cyan }
 function Ok   ($m) { Write-Host "  $m" -ForegroundColor Green }
 function Warn ($m) { Write-Host "  $m" -ForegroundColor Yellow }
 function Die  ($m) { Write-Host ""; Write-Host "  $m" -ForegroundColor Red; Write-Host ""; exit 1 }
+
+# PowerShell's -ErrorActionPreference does NOT apply to ordinary programs: pip can fail
+# outright and the script sails on to announce success. Everything external goes through
+# here so a failure actually stops us.
+function Run ($what, $exe, [string[]]$exeArgs) {
+    & $exe @exeArgs
+    if ($LASTEXITCODE -ne 0) { Die "$what failed (exit code $LASTEXITCODE). The error is above. Fix it, or send it to Claude, then run this again." }
+}
 
 Write-Host ""
 Write-Host "  ===============================" -ForegroundColor White
@@ -25,8 +38,8 @@ Write-Host "  ===============================" -ForegroundColor White
 
 # --- 0. Prerequisites -------------------------------------------------------
 
-# PATH is only re-read by a shell when it starts, so anything winget installs is
-# invisible to this session until we pull it in by hand.
+# PATH is only read when a shell starts, so anything winget installs is invisible to
+# this session until we pull it in by hand.
 function Refresh-Path {
     $machine = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
     $user    = [System.Environment]::GetEnvironmentVariable("Path", "User")
@@ -34,15 +47,10 @@ function Refresh-Path {
 }
 
 # `python` on a clean Windows is a stub that opens the Microsoft Store, so "the command
-# exists" is not the same as "python is installed". Ask it for a version and believe it
-# only if a real one comes back.
+# exists" is not the same as "it's installed". Ask for a version and believe it only if
+# a real one comes back.
 function Have ($exe, $versionArg = "--version") {
-    try {
-        $out = & $exe $versionArg 2>&1 | Out-String
-        return ($out -match "\d+\.\d+")
-    } catch {
-        return $false
-    }
+    try { return ((& $exe $versionArg 2>&1 | Out-String) -match "\d+\.\d+") } catch { return $false }
 }
 
 function Install-With-Winget ($id, $friendly) {
@@ -55,20 +63,54 @@ Refresh-Path
 
 if (-not (Have "winget" "--version")) {
     Die @"
-This laptop doesn't have 'winget', which is the tool Windows uses to install software.
+This laptop doesn't have 'winget', which is how Windows installs software.
 
 Fix: open the Microsoft Store, search for "App Installer", install it, then run this
 again. (On Windows 11 and recent Windows 10 it's normally already there.)
 "@
 }
 
-if (Have "python") { Ok "Python is already here." } else { Install-With-Winget "Python.Python.3.12" "Python" }
-if (Have "node")   { Ok "Node is already here." }   else { Install-With-Winget "OpenJS.NodeJS.LTS" "Node.js" }
-if (Have "git")    { Ok "Git is already here." }    else { Install-With-Winget "Git.Git" "Git" }
+# --- Python: a SPECIFIC version, not whatever happens to be on PATH ----------
+#
+# This is the thing that broke first time round. The libraries here ship prebuilt for
+# Python 3.11-3.13; on a newer Python (3.14 shipped in late 2025) pip finds no prebuilt
+# pydantic-core, falls back to compiling it from Rust source, and dies. So don't trust
+# `python` — go and find 3.12 specifically, installing it if needed. Having several
+# Pythons side by side is normal and harmless; the app gets its own sandbox anyway.
 
-if (-not (Have "python")) { Die "Python still isn't working after installing. Close PowerShell, open a new one, and run this again." }
-if (-not (Have "node"))   { Die "Node still isn't working after installing. Close PowerShell, open a new one, and run this again." }
-if (-not (Have "git"))    { Die "Git still isn't working after installing. Close PowerShell, open a new one, and run this again." }
+function Resolve-Python312 {
+    # The `py` launcher is the reliable way to ask for one particular version.
+    try {
+        $found = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $found) {
+            $path = ($found | Select-Object -Last 1).Trim()
+            if (Test-Path $path) { return $path }
+        }
+    } catch {}
+    foreach ($guess in @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"),
+        "C:\Python312\python.exe"
+    )) { if (Test-Path $guess) { return $guess } }
+    return $null
+}
+
+$python = Resolve-Python312
+if ($python) {
+    Ok "Found Python 3.12."
+} else {
+    Install-With-Winget "Python.Python.3.12" "Python 3.12"
+    $python = Resolve-Python312
+}
+if (-not $python) { Die "Couldn't get Python 3.12 working. Close PowerShell, open a new one, and run this again - a fresh window often fixes it." }
+
+if (-not (Have "node")) { Install-With-Winget "OpenJS.NodeJS.LTS" "Node.js" }
+if (-not (Have "git"))  { Install-With-Winget "Git.Git" "Git" }
+if (-not (Have "node")) { Die "Node still isn't working. Close PowerShell, open a new one, and run this again." }
+if (-not (Have "git"))  { Die "Git still isn't working. Close PowerShell, open a new one, and run this again." }
+Ok "Node and Git are ready."
+
+# npm.ps1 is the blocked one; npm.cmd does the same job and isn't a PowerShell script.
+$npm = "npm.cmd"
 
 # --- 1. The code ------------------------------------------------------------
 
@@ -81,31 +123,45 @@ if (Test-Path (Join-Path $root ".git")) {
 } else {
     Say "Downloading the app into $root ..."
     New-Item -ItemType Directory -Force -Path (Split-Path $root) | Out-Null
-    git clone --quiet https://github.com/thebusinessplaybookcontact-netizen/forge.git $root
+    Run "Download" "git" @("clone", "--quiet", "https://github.com/thebusinessplaybookcontact-netizen/forge.git", $root)
     Ok "Downloaded."
 }
 
 $backend  = Join-Path $root "backend"
 $frontend = Join-Path $root "frontend"
-$venvPy   = Join-Path $backend ".venv\Scripts\python.exe"
+$venvDir  = Join-Path $backend ".venv"
+$venvPy   = Join-Path $venvDir "Scripts\python.exe"
 
 # --- 2. Backend -------------------------------------------------------------
 
-if (-not (Test-Path $venvPy)) {
-    Say "Setting up the brain (a private Python sandbox, so nothing collides)..."
-    python -m venv (Join-Path $backend ".venv")
+# A sandbox built by the wrong Python is worse than none, because everything downstream
+# fails confusingly. Test it by actually importing the app's libraries; rebuild if not.
+$venvOk = $false
+if (Test-Path $venvPy) {
+    & $venvPy -c "import pydantic, fastapi, anthropic" 2>$null
+    $venvOk = ($LASTEXITCODE -eq 0)
+    if (-not $venvOk) { Warn "The existing setup is broken - rebuilding it from scratch." }
 }
-Say "Installing what the brain needs. Lots of scrolling text is normal."
-& $venvPy -m pip install --quiet --upgrade pip
-& $venvPy -m pip install --quiet -r (Join-Path $backend "requirements.txt")
+
+if (-not $venvOk) {
+    if (Test-Path $venvDir) { Remove-Item -Recurse -Force $venvDir }
+    Say "Setting up the brain (a private Python sandbox, so nothing collides)..."
+    Run "Creating the sandbox" $python @("-m", "venv", $venvDir)
+
+    Say "Installing what the brain needs. Scrolling text is normal; it takes a minute."
+    Run "Upgrading pip" $venvPy @("-m", "pip", "install", "--quiet", "--upgrade", "pip")
+    Run "Installing the libraries" $venvPy @("-m", "pip", "install", "--disable-pip-version-check", "-r", (Join-Path $backend "requirements.txt"))
+}
+
+# Say it only once it's true.
+& $venvPy -c "import pydantic, fastapi, anthropic" 2>$null
+if ($LASTEXITCODE -ne 0) { Die "The brain's libraries still aren't importable. Send the errors above to Claude." }
 Ok "Brain ready."
 
 # --- 3. Settings ------------------------------------------------------------
 
 $envFile = Join-Path $backend ".env"
-if (-not (Test-Path $envFile)) {
-    Copy-Item (Join-Path $backend ".env.example") $envFile
-}
+if (-not (Test-Path $envFile)) { Copy-Item (Join-Path $backend ".env.example") $envFile }
 $settings = Get-Content $envFile -Raw
 
 if ($settings -match "(?m)^ANTHROPIC_API_KEY=sk-ant-\S{10,}") {
@@ -114,29 +170,29 @@ if ($settings -match "(?m)^ANTHROPIC_API_KEY=sk-ant-\S{10,}") {
     Write-Host ""
     Write-Host "  Your Claude API key" -ForegroundColor White
     Write-Host "  Get one at https://console.anthropic.com -> API keys. It starts with sk-ant-"
-    Write-Host "  (Nothing is sent anywhere except into a file on this laptop.)"
+    Write-Host "  (It goes into a file on this laptop and nowhere else.)"
     Write-Host ""
     $key = (Read-Host "  Paste it here and press Enter").Trim()
-    if ($key -notmatch "^sk-ant-") { Die "That doesn't look like a Claude key - they all start with sk-ant- . Run this again when you have it." }
+    if ($key -notmatch "^sk-ant-") { Die "That doesn't look like a Claude key - they start with sk-ant- . Run this again when you have it." }
     $settings = $settings -replace "(?m)^ANTHROPIC_API_KEY=.*$", "ANTHROPIC_API_KEY=$key"
     Ok "Key saved."
 }
 
-# Windows names its zones differently from the rest of the world, so translate the
-# common ones. Getting this wrong means the coach thinks tomorrow started at teatime.
+# Windows names its timezones differently from everyone else, so translate the common
+# ones. Getting this wrong means the coach thinks tomorrow started at teatime.
 $zoneMap = @{
-    "Pacific Standard Time"      = "America/Los_Angeles"
-    "Mountain Standard Time"     = "America/Denver"
-    "US Mountain Standard Time"  = "America/Phoenix"
-    "Central Standard Time"      = "America/Chicago"
-    "Eastern Standard Time"      = "America/New_York"
-    "Alaskan Standard Time"      = "America/Anchorage"
-    "Hawaiian Standard Time"     = "Pacific/Honolulu"
-    "GMT Standard Time"          = "Europe/London"
-    "W. Europe Standard Time"    = "Europe/Berlin"
-    "Romance Standard Time"      = "Europe/Paris"
+    "Pacific Standard Time"        = "America/Los_Angeles"
+    "Mountain Standard Time"       = "America/Denver"
+    "US Mountain Standard Time"    = "America/Phoenix"
+    "Central Standard Time"        = "America/Chicago"
+    "Eastern Standard Time"        = "America/New_York"
+    "Alaskan Standard Time"        = "America/Anchorage"
+    "Hawaiian Standard Time"       = "Pacific/Honolulu"
+    "GMT Standard Time"            = "Europe/London"
+    "W. Europe Standard Time"      = "Europe/Berlin"
+    "Romance Standard Time"        = "Europe/Paris"
     "Central Europe Standard Time" = "Europe/Warsaw"
-    "AUS Eastern Standard Time"  = "Australia/Sydney"
+    "AUS Eastern Standard Time"    = "Australia/Sydney"
 }
 $winZone = (Get-TimeZone).Id
 $zone    = $zoneMap[$winZone]
@@ -144,7 +200,7 @@ if ($zone) {
     $settings = $settings -replace "(?m)^COACH_TIMEZONE=.*$", "COACH_TIMEZONE=$zone"
     Ok "Timezone set to $zone."
 } else {
-    Warn "Couldn't translate your timezone ('$winZone') automatically - tell Claude and it'll set it by hand."
+    Warn "Couldn't translate your timezone ('$winZone') - tell Claude and it'll set it by hand."
 }
 
 Set-Content -Path $envFile -Value $settings -NoNewline
@@ -153,9 +209,10 @@ Set-Content -Path $envFile -Value $settings -NoNewline
 
 Say "Building the screens. This is the slowest part - a few minutes."
 Push-Location $frontend
-npm install --silent
-npm run build
-Pop-Location
+try {
+    Run "Installing the screen libraries" $npm @("install", "--no-audit", "--no-fund")
+    Run "Building the screens" $npm @("run", "build")
+} finally { Pop-Location }
 Ok "Screens built."
 
 # --- 5. A way to start it again ---------------------------------------------
@@ -171,10 +228,10 @@ Start-Process "http://localhost:8000"
 $shortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "Goal Coach.lnk"
 $wsh = New-Object -ComObject WScript.Shell
 $lnk = $wsh.CreateShortcut($shortcut)
-$lnk.TargetPath  = "powershell.exe"
-$lnk.Arguments   = "-ExecutionPolicy Bypass -File `"$startScript`""
+$lnk.TargetPath       = "powershell.exe"
+$lnk.Arguments        = "-ExecutionPolicy Bypass -File `"$startScript`""
 $lnk.WorkingDirectory = $backend
-$lnk.Description = "Start your Goal Coach"
+$lnk.Description      = "Start your Goal Coach"
 $lnk.Save()
 Ok "Put a 'Goal Coach' shortcut on your desktop for next time."
 
@@ -182,8 +239,7 @@ Ok "Put a 'Goal Coach' shortcut on your desktop for next time."
 
 Say "Adding your four starting goals..."
 Push-Location $backend
-& $venvPy -m app.seed
-Pop-Location
+try { Run "Seeding your goals" $venvPy @("-m", "app.seed") } finally { Pop-Location }
 
 Write-Host ""
 Write-Host "  ===============================" -ForegroundColor Green
@@ -197,5 +253,5 @@ Write-Host ""
 
 Start-Sleep -Seconds 2
 Start-Process "http://localhost:8000"
-Push-Location $backend
+Set-Location $backend
 & $venvPy -m uvicorn app.main:app --host 127.0.0.1 --port 8000
