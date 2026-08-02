@@ -879,6 +879,13 @@ code {
   height: 100%;
 }
 
+.chat__bar {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+
 .chat__scroll {
   flex: 1;
   min-height: 0;

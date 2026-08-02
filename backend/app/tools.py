@@ -477,7 +477,10 @@ def _dispatch(db: Session, name: str, raw: dict) -> ToolOutcome:
 
         # Hand the model the numbers so it can react specifically rather than generically.
         if habit.cadence.value == "daily":
-            progress = f"streak now {stats.current_streak} days"
+            # This string is read aloud by the voice as well as shown, so "1 days" is
+            # not a typo you can leave in.
+            days = stats.current_streak
+            progress = f"streak now {days} day{'' if days == 1 else 's'}"
         else:
             progress = f"{stats.this_week} of {stats.target_per_week} this week"
         return ToolOutcome(

@@ -85,6 +85,24 @@ window. So it doesn't:
   (`COACH_RECENT_SUMMARY_COUNT`, default 8). Transcripts are stored for the record but
   are **never** replayed to the model.
 
+### The transcript on screen is scratch paper
+
+The conversation is mirrored into `localStorage` and restored on load, because on a
+phone this app does not stay running — lock the screen, take a call, switch apps for
+thirty seconds, and the webview is killed. Without it you come back mid-conversation to
+a blank screen.
+
+It's only restored inside a 30-minute window, deliberately shorter than the server's
+45-minute idle timeout: past that the backend has written the conversation's recap and
+closed it, and resuming would mean turns landing after the summary that no summary will
+ever cover. Being the more cautious of the two starts a new session slightly early
+rather than resuming a dead one, and nothing is lost, because remembering across
+conversations is the recap's job, not the transcript's.
+
+The server enforces this too — `_get_or_create_session` starts a new session rather than
+appending to one that has already ended, so a client holding a stale id (a phone closed
+overnight) can't put turns beyond the summariser's reach.
+
 ### How a conversation "ends"
 
 Nobody taps a done button on a voice app — you put the phone down mid-thought. So the

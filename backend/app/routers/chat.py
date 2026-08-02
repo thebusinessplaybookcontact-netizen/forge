@@ -21,7 +21,12 @@ def _get_or_create_session(db: Session, session_id: int | None) -> CheckInSessio
         session = db.get(CheckInSession, session_id)
         if session is None:
             raise HTTPException(404, f"session {session_id} not found")
-        return session
+        # A finished conversation stays finished. Its recap is already written, so
+        # appending to it would put those turns beyond the reach of the summariser —
+        # said out loud and then never remembered. A phone that was closed overnight
+        # and reopened is exactly this case: it comes back holding a stale id.
+        if session.ended_at is None:
+            return session
 
     session = CheckInSession()
     db.add(session)

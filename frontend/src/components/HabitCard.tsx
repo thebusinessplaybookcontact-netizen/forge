@@ -21,10 +21,13 @@ const TARGETS = [1, 2, 3, 4, 5, 6];
  */
 function foot(habit: Habit): string {
   const unit = habit.cadence === "weekly" ? "week" : "day";
+  // "best 1 days" is the kind of thing that makes an app feel unfinished.
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
   if (habit.cadence === "weekly" && habit.current_streak > 0) {
-    return `${habit.current_streak}-week streak · best ${habit.longest_streak} weeks`;
+    return `${habit.current_streak}-week streak · best ${plural(habit.longest_streak, "week")}`;
   }
-  if (habit.longest_streak > 0) return `Best run: ${habit.longest_streak} ${unit}s`;
+  if (habit.longest_streak > 0) return `Best run: ${plural(habit.longest_streak, unit)}`;
   return "Tap a square to fill in a day you missed.";
 }
 

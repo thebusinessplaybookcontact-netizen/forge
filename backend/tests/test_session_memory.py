@@ -208,6 +208,33 @@ def test_talking_keeps_your_own_session_alive(monkeypatch, fake_summariser):
         assert session_service._aware(session.last_active_at) > stale
 
 
+def test_a_finished_conversation_is_not_resurrected(monkeypatch, fake_summariser):
+    """A phone closed overnight comes back holding a stale session id.
+
+    That conversation has already been summarised. Appending to it would put the new
+    turns after the recap was written, so they'd be said out loud and then never
+    remembered — the memory loop silently losing an evening.
+    """
+    client = TestClient(app)
+    script(monkeypatch, message([text("Hi.")], "end_turn"))
+    old_id = client.post("/api/chat", json={"message": "hello"}).json()["session_id"]
+
+    with SessionLocal() as db:
+        session_service.close_session(db, db.get(CheckInSession, old_id))
+        assert db.get(CheckInSession, old_id).ended_at is not None
+
+    script(monkeypatch, message([text("Morning again.")], "end_turn"))
+    new_id = client.post("/api/chat", json={"message": "morning", "session_id": old_id}).json()[
+        "session_id"
+    ]
+
+    assert new_id != old_id, "a closed session must not take new turns"
+    with SessionLocal() as db:
+        # The old transcript is untouched, and the new turn landed somewhere summarisable.
+        assert "Morning again." not in (db.get(CheckInSession, old_id).transcript or "")
+        assert db.get(CheckInSession, new_id).ended_at is None
+
+
 def test_turns_bump_last_active(monkeypatch, fake_summariser):
     client = TestClient(app)
     script(monkeypatch, message([text("Hi.")], "end_turn"))

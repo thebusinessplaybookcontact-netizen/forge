@@ -6,8 +6,9 @@ import ActionNote from "../components/ActionNote";
 import Composer from "../components/Composer";
 
 export default function Chat() {
-  const { entries, streaming, busy, error, send, undo } = useChatContext();
+  const { entries, streaming, busy, error, send, undo, reset } = useChatContext();
   const bottom = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const seeded = useRef(false);
@@ -22,15 +23,35 @@ export default function Chat() {
     }
   }, [location, navigate, send]);
 
+  /**
+   * Follow the reply as it streams — but only if you're already at the bottom.
+   *
+   * Anchoring unconditionally means you cannot scroll up to re-read anything while the
+   * coach is talking: every token yanks you back down. Once you've scrolled away, the
+   * screen holds still until you return to the bottom yourself.
+   */
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: "smooth" });
+    const view = scroller.current;
+    if (!view) return;
+    const distance = view.scrollHeight - view.scrollTop - view.clientHeight;
+    if (distance < 120) {
+      bottom.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [entries, streaming]);
 
   const empty = entries.length === 0 && !streaming;
 
   return (
     <div className="chat">
-      <div className="chat__scroll">
+      {!empty && (
+        <div className="chat__bar">
+          <button className="row__edit" type="button" onClick={reset} disabled={busy}>
+            Start fresh
+          </button>
+        </div>
+      )}
+
+      <div className="chat__scroll" ref={scroller}>
         {empty && (
           <p className="chat__empty">
             Talk to me. Ramble if you want — I'll keep track of what matters.
