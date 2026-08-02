@@ -244,6 +244,12 @@ try {
     Run "Installing the screen libraries" $npm @("install", "--no-audit", "--no-fund")
     Run "Building the screens" $npm @("run", "build")
 } finally { Pop-Location }
+
+# The backend only serves the app if this file exists; without it every page is a bare
+# 404 and the cause is nowhere near the symptom. Check rather than assume.
+if (-not (Test-Path (Join-Path $frontend "dist\index.html"))) {
+    Die "The screens didn't actually build - there's no frontend\dist\index.html. Send the output above to Claude."
+}
 Ok "Screens built."
 
 # --- 5. A way to start it again ---------------------------------------------
@@ -251,8 +257,19 @@ Ok "Screens built."
 $startScript = Join-Path $root "start.ps1"
 @"
 # Starts Goal Coach. Close this window to stop it.
+#
+# The browser is opened by a background job that waits for the server to answer first.
+# Opening it up front races the server and lands on a connection error.
 Set-Location "$backend"
-Start-Process "http://localhost:8000"
+Start-Job {
+    for (`$i = 0; `$i -lt 90; `$i++) {
+        try {
+            Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/api/health" -TimeoutSec 2 | Out-Null
+            Start-Process "http://localhost:8000"
+            return
+        } catch { Start-Sleep -Milliseconds 500 }
+    }
+} | Out-Null
 & "$venvPy" -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 "@ | Set-Content -Path $startScript
 
@@ -282,8 +299,20 @@ Write-Host "   This window IS the app - leave it open while you use it."
 Write-Host "   To stop: close this window. To start again: the desktop shortcut."
 Write-Host ""
 
-Start-Sleep -Seconds 2
-Start-Process "http://localhost:8000"
 Set-Location $backend
+
+# Wait for the server to actually answer before opening the browser. Opening it first
+# races a process that hasn't started yet, and you get a connection error on a setup
+# that worked perfectly.
+Start-Job {
+    for ($i = 0; $i -lt 90; $i++) {
+        try {
+            Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/api/health" -TimeoutSec 2 | Out-Null
+            Start-Process "http://localhost:8000"
+            return
+        } catch { Start-Sleep -Milliseconds 500 }
+    }
+} | Out-Null
+
 # uvicorn logs to the error stream by design, so this must not run under "Stop" either.
 Invoke-Native { & $venvPy -m uvicorn app.main:app --host 127.0.0.1 --port 8000 }
