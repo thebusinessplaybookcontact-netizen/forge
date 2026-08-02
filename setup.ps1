@@ -23,12 +23,38 @@ function Ok   ($m) { Write-Host "  $m" -ForegroundColor Green }
 function Warn ($m) { Write-Host "  $m" -ForegroundColor Yellow }
 function Die  ($m) { Write-Host ""; Write-Host "  $m" -ForegroundColor Red; Write-Host ""; exit 1 }
 
-# PowerShell's -ErrorActionPreference does NOT apply to ordinary programs: pip can fail
-# outright and the script sails on to announce success. Everything external goes through
-# here so a failure actually stops us.
+# Running ordinary programs from PowerShell is a minefield, in two opposite directions:
+#
+#   1. A program that FAILS doesn't stop the script. $ErrorActionPreference has no say
+#      over exit codes, so pip can die and the next line cheerfully claims success.
+#   2. A program that SUCCEEDS can stop the script. Windows PowerShell turns anything
+#      written to the error stream into a real error object, and with "Stop" set that
+#      becomes fatal — so pip's warnings, npm's notices, or git's progress can kill a
+#      run that was going perfectly well. Even `2>$null` doesn't reliably save you.
+#
+# So: every external program goes through one of these two, both of which relax the
+# preference for the duration and judge the outcome by the exit code alone — the only
+# signal that actually means failure.
+
+function Invoke-Native ([scriptblock]$block) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $block } finally { $ErrorActionPreference = $prev }
+}
+
+# For commands that must succeed. Output stays visible so failures are legible.
 function Run ($what, $exe, [string[]]$exeArgs) {
-    & $exe @exeArgs
+    Invoke-Native { & $exe @exeArgs }
     if ($LASTEXITCODE -ne 0) { Die "$what failed (exit code $LASTEXITCODE). The error is above. Fix it, or send it to Claude, then run this again." }
+}
+
+# For commands whose failure is the answer, not a problem — "is this thing installed?",
+# "does this sandbox work?". Silent, never throws, returns true/false.
+function Probe ($exe, [string[]]$exeArgs) {
+    try {
+        Invoke-Native { & $exe @exeArgs 2>&1 | Out-Null }
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
 }
 
 Write-Host ""
@@ -50,12 +76,17 @@ function Refresh-Path {
 # exists" is not the same as "it's installed". Ask for a version and believe it only if
 # a real one comes back.
 function Have ($exe, $versionArg = "--version") {
-    try { return ((& $exe $versionArg 2>&1 | Out-String) -match "\d+\.\d+") } catch { return $false }
+    try {
+        $out = Invoke-Native { & $exe $versionArg 2>&1 | Out-String }
+        return ($out -match "\d+\.\d+")
+    } catch { return $false }
 }
 
 function Install-With-Winget ($id, $friendly) {
     Say "Installing $friendly. This can take a few minutes - it's a real download."
-    winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements | Out-Null
+    Invoke-Native {
+        winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+    }
     Refresh-Path
 }
 
@@ -81,10 +112,10 @@ again. (On Windows 11 and recent Windows 10 it's normally already there.)
 function Resolve-Python312 {
     # The `py` launcher is the reliable way to ask for one particular version.
     try {
-        $found = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
+        $found = Invoke-Native { & py -3.12 -c "import sys; print(sys.executable)" 2>$null }
         if ($LASTEXITCODE -eq 0 -and $found) {
-            $path = ($found | Select-Object -Last 1).Trim()
-            if (Test-Path $path) { return $path }
+            $path = ($found | Select-Object -Last 1 | Out-String).Trim()
+            if ($path -and (Test-Path $path)) { return $path }
         }
     } catch {}
     foreach ($guess in @(
@@ -118,7 +149,7 @@ $root = Join-Path $HOME "Documents\forge"
 
 if (Test-Path (Join-Path $root ".git")) {
     Say "Updating the app to the latest version..."
-    git -C $root pull --ff-only | Out-Null
+    Run "Update" "git" @("-C", $root, "pull", "--ff-only")
     Ok "Up to date."
 } else {
     Say "Downloading the app into $root ..."
@@ -138,8 +169,7 @@ $venvPy   = Join-Path $venvDir "Scripts\python.exe"
 # fails confusingly. Test it by actually importing the app's libraries; rebuild if not.
 $venvOk = $false
 if (Test-Path $venvPy) {
-    & $venvPy -c "import pydantic, fastapi, anthropic" 2>$null
-    $venvOk = ($LASTEXITCODE -eq 0)
+    $venvOk = Probe $venvPy @("-c", "import pydantic, fastapi, anthropic")
     if (-not $venvOk) { Warn "The existing setup is broken - rebuilding it from scratch." }
 }
 
@@ -154,8 +184,9 @@ if (-not $venvOk) {
 }
 
 # Say it only once it's true.
-& $venvPy -c "import pydantic, fastapi, anthropic" 2>$null
-if ($LASTEXITCODE -ne 0) { Die "The brain's libraries still aren't importable. Send the errors above to Claude." }
+if (-not (Probe $venvPy @("-c", "import pydantic, fastapi, anthropic"))) {
+    Die "The brain's libraries still aren't importable. Send the errors above to Claude."
+}
 Ok "Brain ready."
 
 # --- 3. Settings ------------------------------------------------------------
@@ -254,4 +285,5 @@ Write-Host ""
 Start-Sleep -Seconds 2
 Start-Process "http://localhost:8000"
 Set-Location $backend
-& $venvPy -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+# uvicorn logs to the error stream by design, so this must not run under "Stop" either.
+Invoke-Native { & $venvPy -m uvicorn app.main:app --host 127.0.0.1 --port 8000 }
