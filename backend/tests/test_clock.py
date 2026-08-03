@@ -8,9 +8,9 @@ resolved a day late, and a task due today read as overdue all evening.
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 
@@ -42,6 +42,36 @@ def test_defaults_to_utc(tz):
     assert clock.zone().key == "UTC"
 
 
+def test_survives_a_machine_with_no_timezone_database(tz, monkeypatch):
+    """Windows ships no tz database, and the fallback used to need one too.
+
+    `ZoneInfo("America/Los_Angeles")` raises there without the tzdata package. That was
+    caught — and the handler then called `ZoneInfo("UTC")`, which raises identically and
+    wasn't. Every request that touched a date became a 500, which on the dashboard is
+    every request there is. A fallback that depends on the machinery it's catching for
+    is not a fallback.
+    """
+
+    def no_database(*_args, **_kwargs):
+        raise ZoneInfoNotFoundError("No time zone found")
+
+    monkeypatch.setattr(clock, "ZoneInfo", no_database)
+    tz("America/Los_Angeles")
+
+    assert clock.zone().utcoffset(None) == timedelta(0), "should be UTC, not an exception"
+    assert isinstance(clock.today_local(), date)
+    assert clock.to_local(datetime(2026, 7, 30, 12, 0)).tzinfo is not None
+
+    # And the thing that actually broke: the dashboard's own dependencies.
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        db.add(Goal(text="Fitness", horizon=Horizon.lifetime))
+        db.commit()
+        assert "## Habits" in build_system_blocks(db)[1]["text"]
+    Base.metadata.drop_all(bind=engine)
+
+
 def test_uses_the_configured_zone(tz):
     tz("America/Los_Angeles")
     assert clock.zone().key == "America/Los_Angeles"
@@ -65,7 +95,9 @@ def test_naive_timestamps_are_treated_as_utc(tz):
 
 def test_a_bad_timezone_falls_back_instead_of_crashing(tz):
     tz("Mars/Olympus_Mons")
-    assert clock.zone().key == "UTC"
+    # Deliberately checks the offset rather than .key: the fallback is datetime's own
+    # timezone.utc, precisely so it can't depend on the tz database being present.
+    assert clock.zone().utcoffset(None) == timedelta(0)
 
 
 def test_today_matches_the_configured_zone(tz):

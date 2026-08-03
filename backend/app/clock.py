@@ -13,7 +13,7 @@ history.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, tzinfo
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -23,15 +23,28 @@ log = logging.getLogger("coach")
 
 
 @lru_cache
-def zone() -> ZoneInfo:
+def zone() -> tzinfo:
+    """The configured zone, or UTC if it can't be had.
+
+    Windows ships no timezone database — `ZoneInfo("America/Los_Angeles")` raises there
+    unless the `tzdata` package is installed, which is why it's in requirements.txt. But
+    the fallback must not depend on the same machinery it's catching for: returning
+    `ZoneInfo("UTC")` here re-raises the identical error and takes down every request
+    that touches a date. `timezone.utc` is built into Python and cannot fail.
+    """
     name = get_settings().timezone
     try:
         return ZoneInfo(name)
     except (ZoneInfoNotFoundError, ValueError):
-        # A typo in config shouldn't take the app down, but it must not be silent —
-        # the symptom (dates off by one, some of the day) is miserable to diagnose.
-        log.error("Unknown COACH_TIMEZONE %r; falling back to UTC", name)
-        return ZoneInfo("UTC")
+        # A typo in config, or a missing tz database, shouldn't take the app down — but
+        # it must not be silent either: the symptom (dates off by one, for part of the
+        # day) is miserable to diagnose from the outside.
+        log.error(
+            "Could not load COACH_TIMEZONE %r; falling back to UTC. On Windows this "
+            "usually means the tzdata package is missing: pip install tzdata",
+            name,
+        )
+        return timezone.utc
 
 
 def to_local(moment: datetime) -> datetime:

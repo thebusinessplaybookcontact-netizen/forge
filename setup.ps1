@@ -177,15 +177,24 @@ if (-not $venvOk) {
     if (Test-Path $venvDir) { Remove-Item -Recurse -Force $venvDir }
     Say "Setting up the brain (a private Python sandbox, so nothing collides)..."
     Run "Creating the sandbox" $python @("-m", "venv", $venvDir)
-
-    Say "Installing what the brain needs. Scrolling text is normal; it takes a minute."
     Run "Upgrading pip" $venvPy @("-m", "pip", "install", "--quiet", "--upgrade", "pip")
-    Run "Installing the libraries" $venvPy @("-m", "pip", "install", "--disable-pip-version-check", "-r", (Join-Path $backend "requirements.txt"))
 }
+
+# Always, not just on a fresh sandbox. The requirements change as the app is worked on,
+# and a re-run after `git pull` is exactly how those changes are meant to arrive. pip is
+# quick when there's nothing to do; skipping it means a stale install that imports fine
+# and then fails at runtime on the one library that was added.
+Say "Installing what the brain needs. Scrolling text is normal; it takes a minute."
+Run "Installing the libraries" $venvPy @("-m", "pip", "install", "--disable-pip-version-check", "-r", (Join-Path $backend "requirements.txt"))
 
 # Say it only once it's true.
 if (-not (Probe $venvPy @("-c", "import pydantic, fastapi, anthropic"))) {
     Die "The brain's libraries still aren't importable. Send the errors above to Claude."
+}
+# Windows has no timezone database of its own, so this is a real thing that can be
+# missing — and when it is, every screen in the app returns an error.
+if (-not (Probe $venvPy @("-c", "from zoneinfo import ZoneInfo; ZoneInfo('America/Los_Angeles')"))) {
+    Die "Python can't read timezones on this machine, which breaks every screen. The tzdata package should have fixed it. Send this to Claude."
 }
 Ok "Brain ready."
 
