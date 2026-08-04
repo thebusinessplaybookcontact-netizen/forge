@@ -294,15 +294,34 @@ ceiling is your API quota.
 The look is defined by tokens at the top of `frontend/src/styles.css`. Components read
 tokens and never hardcode a colour, so a palette change is one block, not a sweep.
 
-- **One accent**, a deep petrol green (`#17695A` light / `#5FC0A3` dark), used only for
+- **One accent**, an electric mint (`#06603F` light / `#2BD48B` dark), used only for
   interaction — buttons, focus, the live mic, the active tab. Neutrals are biased cool
   toward it rather than being default grey.
+- **The palette is shared with Ledger**, the sibling app, and that is the point: same
+  deep blue-black surfaces (`#07090D` / `#0C1016`), same Inter, same tabular figures, so
+  the two read as one hand. Ledger is dark-only, so the light theme had no sibling to
+  copy and was derived — mint at `#2BD48B` is 1.8:1 on white and unusable, so light mode
+  takes the same hue far darker. Every pair is measured (`--accent` carries white at
+  7.6:1), not eyeballed.
+- **The icon is the inverse of Ledger's** — a deep tile with a mint mark, where Ledger
+  is a bright gradient tile with a dark letterform. A shared accent is not enough to
+  tell two apps apart on a home screen; the silhouette has to differ, which is also why
+  this one is a mark and not a letter. It sits inside the maskable safe zone, and the
+  PNGs are full-bleed and opaque because iOS renders `apple-touch-icon` transparency as
+  black and Android crops maskable icons to a squircle.
 - **Semantic colour is separate from the accent.** Overdue is red because it's a state;
   if state shared the accent, "needs attention" and "you can tap this" would look alike.
 - **Two typefaces with a rule**: the UI sans is for anything you *operate*; the reading
   serif is only for the coach's own words — its replies, the "why" behind a goal, the
   remembered recap. The voice looks different from the chrome because it is different.
   Don't use the serif for headings; that dissolves the distinction.
+  Both are **self-hosted variable fonts** (Inter and Newsreader, via
+  `@fontsource-variable`) rather than CSS font stacks. Two reasons: an installed PWA has
+  to render correctly with no network, and the old stacks resolved to whatever the OS
+  happened to ship — Iowan on iOS, something else on Android — which made the one
+  structural idea in this design look accidental on half the platforms it runs on.
+  Numerals are tabular, as in Ledger, so a streak counter updating in place doesn't make
+  the text beside it twitch sideways.
 - **State is encoded as form, not just text.** A due date renders as a chip —
   overdue / today / tomorrow / `Sun` / `Aug 12` — so what needs attention reads without
   comparing dates. The nearby days are *named* because "Fri" is read at a glance where
@@ -318,12 +337,23 @@ tokens and never hardcode a colour, so a palette change is one block, not a swee
   script in `index.html` *before first paint*, which is why there's no flash of the wrong
   theme; Settings offers System / Light / Dark. Every token pair passes WCAG AA
   (checked: body ≥ 15:1, secondary ≥ 6:1, accent buttons ≥ 6.5:1, chips ≥ 5.4:1).
+  These floors are what pin the light palette: they are the reason light mode's accent
+  is a deep forest green rather than the mint, and they were re-measured across all
+  twenty pairs when the palette changed. Re-run them before shipping a new colour —
+  a mint that looks right on a dark mock is unreadable on white.
 - Touch targets are ≥ 44px, focus is always visible, and `prefers-reduced-motion` kills
   every transition.
 
-Deliberately avoided: the cream-and-terracotta-with-serif-display look, near-black with a
-single acid accent, purple gradients, and emoji as iconography — the mic is inline SVG so
-it takes the button's colour and renders identically everywhere.
+Deliberately avoided: the cream-and-terracotta-with-serif-display look, purple gradients,
+and emoji as iconography — the mic is inline SVG so it takes the button's colour and
+renders identically everywhere.
+
+Note that "near-black with a single bright accent" *was* on that avoided list, and this
+palette is now exactly that. The constraint changed rather than the taste: matching
+Ledger became the governing requirement, and a family resemblance you have to explain
+isn't one. Nothing structural moved — the serif-for-the-voice rule, the semantic/accent
+split and the containment layout are all untouched, and they are what actually make this
+app itself. Only the skin is borrowed.
 
 ## Voice
 

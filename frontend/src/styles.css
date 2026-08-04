@@ -1,93 +1,111 @@
 /* Goal Coach — design tokens and components.
  *
- * Direction: cool graphite neutrals, one accent (deep petrol green), and a single
- * structural idea — the coach's own words are set in a reading serif while everything
- * you *operate* is set in the UI sans. The voice looks different from the chrome
- * because it is different.
+ * Direction: "Kin". Deep blue-black surfaces and an electric mint accent, shared
+ * deliberately with Ledger (its sibling app) so the two read as one hand — same
+ * neutrals, same Inter, same tabular figures. The structural idea is unchanged and
+ * is the thing that makes this app itself: the coach's own words are set in a
+ * reading serif while everything you *operate* is set in the UI sans. The voice
+ * looks different from the chrome because it is different.
+ *
+ * Ledger is dark-only; this app is not, so the light theme has no sibling to copy
+ * and was derived. Mint at #2bd48b is far too light on white (1.8:1), so light mode
+ * takes the same hue much darker. Every pair below is measured, not eyeballed —
+ * body >= 15:1, secondary >= 6:1, accent buttons >= 6.5:1, chips >= 5.4:1.
  *
  * Themes are driven by data-theme on <html>, stamped before first paint by an inline
  * script in index.html. Components read tokens only and never branch on theme
  * themselves, so adding a theme means adding a token block and nothing else.
+ *
+ * Fonts are self-hosted rather than pulled from a CDN: this is an installed PWA and
+ * it must render correctly with no network.
  */
+
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/newsreader";
 
 :root {
   color-scheme: light;
 
   /* Neutrals are biased cool toward the accent rather than being pure grey. */
-  --ground: #f7f8f7;
+  --ground: #f4f6fa;
   --raised: #ffffff;
-  --sunken: #eceeed;
-  --line: #dde1df;
-  --line-strong: #c6ccc9;
+  --sunken: #e8ecf3;
+  --line: #dde3ec;
+  --line-strong: #c3ccda;
 
-  --ink: #14181a;
-  --ink-soft: #59615e;
-  --ink-faint: #878f8c;
+  --ink: #0d1117;
+  --ink-soft: #525b68;
+  --ink-faint: #79828f;
 
-  /* The single accent. Used for interaction only. */
-  --accent: #17695a;
-  --accent-hover: #125548;
+  /* The single accent. Used for interaction only. Mint's light-mode counterpart:
+     same hue, dark enough to carry white text at 7.6:1. */
+  --accent: #06603f;
+  --accent-hover: #054d33;
   --accent-on: #ffffff;
-  --accent-wash: #e3efeb;
+  --accent-wash: #dff0e7;
 
   /* Semantic, deliberately not the accent — state must not read as interaction. */
-  --danger: #9a3b2f;
-  --danger-wash: #f6e7e4;
+  --danger: #a8202f;
+  --danger-wash: #fae9ea;
 
-  --shadow: 0 1px 2px rgb(20 24 26 / 6%), 0 4px 16px rgb(20 24 26 / 4%);
+  --shadow: 0 1px 2px rgb(13 17 23 / 6%), 0 4px 16px rgb(13 17 23 / 4%);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Not near-black: a desaturated green-slate that keeps the accent at home. */
-  --ground: #101413;
-  --raised: #171c1b;
-  --sunken: #1c2221;
-  --line: #262d2c;
-  --line-strong: #38403e;
+  /* Ledger's surfaces exactly — a deep blue-black, not a neutral near-black. */
+  --ground: #07090d;
+  --raised: #0c1016;
+  --sunken: #11161f;
+  --line: #1a212c;
+  --line-strong: #273040;
 
-  --ink: #e9eeec;
-  --ink-soft: #9aa4a1;
-  --ink-faint: #6e7876;
+  --ink: #e8eef6;
+  --ink-soft: #8e9aab;
+  --ink-faint: #5c6878;
 
-  --accent: #5fc0a3;
-  --accent-hover: #77cfb4;
-  --accent-on: #0b1210;
-  --accent-wash: #16302a;
+  --accent: #2bd48b;
+  --accent-hover: #4fdda1;
+  --accent-on: #07090d;
+  --accent-wash: #0e2b21;
 
-  --danger: #e08072;
-  --danger-wash: #33201d;
+  --danger: #ff5c6e;
+  --danger-wash: #2a1015;
 
-  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 16px rgb(0 0 0 / 24%);
+  --shadow: 0 1px 2px rgb(0 0 0 / 50%), 0 4px 16px rgb(0 0 0 / 32%);
 }
 
 /* No-JS / pre-hydration fallback so the OS preference still lands. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --ground: #101413;
-    --raised: #171c1b;
-    --sunken: #1c2221;
-    --line: #262d2c;
-    --line-strong: #38403e;
-    --ink: #e9eeec;
-    --ink-soft: #9aa4a1;
-    --ink-faint: #6e7876;
-    --accent: #5fc0a3;
-    --accent-hover: #77cfb4;
-    --accent-on: #0b1210;
-    --accent-wash: #16302a;
-    --danger: #e08072;
-    --danger-wash: #33201d;
+    --ground: #07090d;
+    --raised: #0c1016;
+    --sunken: #11161f;
+    --line: #1a212c;
+    --line-strong: #273040;
+    --ink: #e8eef6;
+    --ink-soft: #8e9aab;
+    --ink-faint: #5c6878;
+    --accent: #2bd48b;
+    --accent-hover: #4fdda1;
+    --accent-on: #07090d;
+    --accent-wash: #0e2b21;
+    --danger: #ff5c6e;
+    --danger-wash: #2a1015;
   }
 }
 
 :root {
-  /* Type: UI face for anything you operate, reading face for the coach's voice. */
-  --ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+  /* Type: UI face for anything you operate, reading face for the coach's voice.
+     Both are self-hosted variable fonts, so the two faces stay visually distinct on
+     every device. The old stacks resolved to whatever the OS happened to have —
+     Iowan on iOS, something else entirely on Android — which made the one
+     structural idea in this design look like an accident on half the platforms. */
+  --ui: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     sans-serif;
-  --read: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --read: "Newsreader Variable", ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
 
   --t-xs: 0.75rem;
   --t-sm: 0.8125rem;
@@ -132,6 +150,17 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Tabular figures for anything numeric, as in Ledger. Streak counts and due chips
+   sit in lists and update in place; proportional digits make the text beside them
+   twitch sideways every time a 1 becomes a 7. */
+.num,
+.chip,
+.habit__meta,
+.panel__count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 :focus-visible {

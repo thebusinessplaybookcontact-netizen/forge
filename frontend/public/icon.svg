@@ -1,5 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#12110f" />
-  <circle cx="256" cy="256" r="132" fill="none" stroke="#e8734a" stroke-width="28" />
-  <circle cx="256" cy="256" r="42" fill="#e8734a" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Coach">
+  <!-- Kin palette, shared with Ledger. Ledger's icon is a bright gradient tile
+       carrying a dark letterform; this is the inverse — a deep tile carrying a mint
+       mark — so the two are told apart instantly on a home screen and in the app
+       switcher, where a shared accent colour alone would not separate them. A mark
+       rather than a letter, for the same reason.
+
+       The stroke sits inside the maskable safe zone (a circle of radius 205 about
+       the centre), so Android's squircle crop cannot clip it. -->
+  <rect width="512" height="512" rx="112" fill="#07090d" />
+  <path
+    d="M140 284 L224 366 L388 160"
+    fill="none"
+    stroke="#2bd48b"
+    stroke-width="50"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 </svg>

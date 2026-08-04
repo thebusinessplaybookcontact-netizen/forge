@@ -1,6 +1,10 @@
 import type { ThemePref } from "./types";
 
-const THEME_COLORS = { light: "#f7f8f7", dark: "#101413" };
+// Must stay in step with --ground in styles.css and the pre-paint script in
+// index.html. Three copies exist because each runs at a moment the others cannot:
+// the inline script before first paint, this on every theme change, and the CSS
+// itself. A mismatch shows up as a status bar that doesn't match the page.
+const THEME_COLORS = { light: "#f4f6fa", dark: "#07090d" };
 
 /** Resolve a preference to the theme actually being shown. */
 export function resolveTheme(pref: ThemePref): "light" | "dark" {
